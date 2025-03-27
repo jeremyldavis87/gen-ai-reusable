@@ -1,0 +1,41 @@
+# Web framework
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+python-multipart>=0.0.6  # For form data handling
+
+# HTTP client
+httpx>=0.24.1
+
+# Database
+sqlalchemy>=2.0.0
+alembic>=1.11.1
+
+# Authentication
+python-jose>=3.3.0  # For JWT
+passlib>=1.7.4      # For password hashing
+bcrypt>=4.0.1       # Password hashing algorithm
+
+# Document processing
+PyPDF2>=3.0.0
+python-docx>=0.8.11
+pdfminer.six>=20221105
+pandas>=2.0.0
+openpyxl>=3.1.2     # For Excel processing
+
+# Logging
+structlog>=23.1.0
+
+# LLM providers
+openai>=1.0.0        # For GPT-4o
+anthropic>=0.5.0     # For Claude Sonnet 3.5
+
+# Testing
+pytest>=7.3.1
+pytest-asyncio>=0.21.0
+
+# Development
+black>=23.3.0
+isort>=5.12.0
+flake8>=6.0.0
+mypy>=1.3.0
