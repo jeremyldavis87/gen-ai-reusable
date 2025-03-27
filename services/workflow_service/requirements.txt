@@ -1,26 +1,23 @@
-# Conversational Service Requirements
+# Workflow Automation Service Requirements
 
 # Web framework
 fastapi>=0.100.0
 uvicorn>=0.22.0
 pydantic>=2.0.0
-python-multipart>=0.0.6
 
 # HTTP client
 httpx>=0.24.1
 
-# Database
-sqlalchemy>=2.0.0
-alembic>=1.11.1
-psycopg2-binary>=2.9.5  # PostgreSQL adapter
-
-# Authentication
-python-jose>=3.3.0
-passlib>=1.7.4
-bcrypt>=4.0.1
-
 # AWS SDK
 boto3>=1.28.0
+
+# AWS services
+amazon-sqs>=1.28.0  # For message queuing in workflows
+amazon-comprehend>=1.28.0  # For entity and key phrase extraction
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.5  # PostgreSQL adapter
 
 # Logging
 structlog>=23.1.0
@@ -28,6 +25,3 @@ structlog>=23.1.0
 # LLM providers
 openai>=1.0.0
 anthropic>=0.5.0
-
-# Environment variables
-python-dotenv>=1.0.0

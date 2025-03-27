@@ -4,13 +4,24 @@ A comprehensive platform offering reusable AI capabilities as services to help s
 
 ## Overview
 
-This platform provides a collection of eight core services, each exposing multiple endpoints that leverage LLMs (Large Language Models) for different tasks. The services are designed to be general-purpose and reusable across various domains and use cases.
+This platform provides a collection of nine core services, each exposing multiple endpoints that leverage LLMs (Large Language Models) for different tasks. The services are designed to be general-purpose and reusable across various domains and use cases.
 
 ## Services
 
 ### 1. Code Generation and Transformation
 
-Generate, document, refactor, translate, and test code using LLMs.
+Leverage LLMs to automate various aspects of the software development lifecycle, from initial code creation to maintenance and optimization.
+
+This service utilizes advanced prompt engineering techniques to generate high-quality code, documentation, and tests. It supports multiple programming languages and can be customized for specific coding standards and patterns.
+
+**AWS Integration:** Uses Amazon S3 for storing code templates and Amazon Comprehend for analyzing code requirements. Deployed as containerized microservices on AWS infrastructure.
+
+**Use Cases:**
+- Rapid prototyping of new features based on natural language specifications
+- Automated documentation generation for legacy codebases
+- Cross-language code translation for migration projects
+- Code refactoring to improve performance or readability
+- Test generation to increase code coverage
 
 - **Endpoints**:
   - `/code/generate`: Generate code from natural language specifications
@@ -21,7 +32,18 @@ Generate, document, refactor, translate, and test code using LLMs.
 
 ### 2. Document Extraction
 
-Extract structured information from various document types.
+Transform unstructured documents into structured, machine-readable data by extracting key information using advanced NLP techniques.
+
+This service processes various document formats (PDF, DOCX, images via OCR) and extracts structured information based on specified schemas. It combines LLM capabilities with rule-based extraction for optimal accuracy.
+
+**AWS Integration:** Leverages Amazon Textract for initial document processing, Amazon Comprehend for entity recognition, and stores extracted data in Amazon RDS Aurora PostgreSQL with appropriate schemas.
+
+**Use Cases:**
+- Automated processing of invoices, receipts, and financial documents
+- Extraction of key information from legal contracts and agreements
+- Conversion of technical documentation into structured knowledge bases
+- Processing of forms and applications for automated workflow systems
+- Data extraction from research papers and technical literature
 
 - **Endpoints**:
   - `/document-extraction/extract`: Extract information from a document
@@ -30,7 +52,18 @@ Extract structured information from various document types.
 
 ### 3. Classification and Categorization
 
-Classify and categorize content according to specified categories.
+Automatically classify and categorize content according to customizable taxonomies and classification schemes.
+
+This service uses fine-tuned language models to accurately classify content across multiple dimensions. It supports both single-label and multi-label classification, with confidence scores for each category.
+
+**AWS Integration:** Utilizes Amazon Comprehend for initial content analysis, stores classification models and taxonomies in Amazon S3, and uses Amazon DynamoDB for classification results and metadata.
+
+**Use Cases:**
+- Content moderation for user-generated content platforms
+- Automatic tagging and categorization of articles and documents
+- Sentiment analysis for customer feedback and social media monitoring
+- Topic classification for knowledge management systems
+- Intent recognition for customer support systems
 
 - **Endpoints**:
   - `/classification/classify`: Classify content according to specified categories
@@ -39,7 +72,18 @@ Classify and categorize content according to specified categories.
 
 ### 4. Conversational Interfaces
 
-Create domain-specific chatbots, Q&A systems, and manage multi-turn dialogues.
+Build sophisticated conversational experiences with domain-specific knowledge, multi-turn dialogue capabilities, and contextual awareness.
+
+This service provides a complete framework for creating conversational AI applications, from simple chatbots to complex dialogue systems with memory and reasoning capabilities. It includes features for conversation state management, knowledge retrieval, and dialogue analysis.
+
+**AWS Integration:** Uses Amazon DynamoDB for conversation state management, Amazon S3 for knowledge base storage, Amazon Comprehend for intent detection and entity recognition, and Amazon Cognito for user authentication in personalized conversations.
+
+**Use Cases:**
+- Customer support automation with domain-specific knowledge
+- Interactive documentation and knowledge base interfaces
+- Virtual assistants for internal enterprise applications
+- Educational tutoring systems with multi-turn dialogue capabilities
+- Conversational interfaces for complex workflows and processes
 
 - **Endpoints**:
   - `/conversation/chat`: Generate responses in a conversation
@@ -50,9 +94,40 @@ Create domain-specific chatbots, Q&A systems, and manage multi-turn dialogues.
   - `/conversation/contextual-chat`: Context-aware response generation
   - `/conversation/dialogue-management`: Manage complex dialogue flows
 
-### 5. Search and Retrieval
+### 5. Format Conversion Service
 
-Perform semantic search, compare documents, and query knowledge bases.
+Transform unstructured text into structured, formatted outputs according to specified instructions and schemas.
+
+This service converts raw text and documents into various structured formats using advanced LLM capabilities. It handles texts of any size through intelligent chunking and can process both simple and complex conversion tasks with high accuracy.
+
+**AWS Integration:** Utilizes Amazon Bedrock for LLM-based text structuring, Amazon S3 for storing conversion templates and large documents, and Amazon RDS Aurora PostgreSQL for caching common conversion patterns.
+
+**Use Cases:**
+- Converting unstructured business documents into structured data formats
+- Transforming legacy data formats into modern standards
+- Extracting structured information from research papers and technical literature
+- Converting between different data serialization formats
+- Creating structured datasets from raw text for machine learning applications
+
+- **Endpoints**:
+  - `/convert`: Convert unstructured text to a specified format
+  - `/convert/file`: Convert an uploaded file to a specified format
+  - `/convert/stream`: Stream the conversion process for large texts with progress updates
+
+### 6. Search and Retrieval
+
+Implement advanced semantic search capabilities that understand the meaning and context of queries beyond simple keyword matching.
+
+This service combines vector embeddings, LLM-based relevance scoring, and traditional search techniques to provide highly relevant search results. It includes features for document comparison, query reformulation, and knowledge base querying.
+
+**AWS Integration:** Utilizes Amazon RDS Aurora PostgreSQL with pgvector extension for vector storage and similarity search, Amazon S3 for document storage, and integrates with Amazon Comprehend for query understanding.
+
+**Use Cases:**
+- Enhanced enterprise search for internal knowledge bases and documentation
+- Semantic search for customer-facing documentation and support
+- Document similarity analysis for legal and compliance applications
+- Intelligent query understanding for e-commerce and product search
+- Research assistance for scientific and academic applications
 
 - **Endpoints**:
   - `/search/search`: Search documents using semantic or keyword search
@@ -61,9 +136,20 @@ Perform semantic search, compare documents, and query knowledge bases.
   - `/search/query-knowledge-base`: Query a knowledge base and generate answers
   - `/search/query-reformulation`: Reformulate search queries to improve results
 
-### 6. Workflow Automation
+### 7. Workflow Automation
 
-Classify tickets, analyze requirements, identify dependencies, and automate workflows.
+Streamline and optimize business processes by automating the analysis, classification, and routing of information through workflows.
+
+This service applies AI to common workflow challenges, helping to classify incoming requests, analyze requirements, identify dependencies, and suggest process improvements. It integrates with existing workflow systems through APIs.
+
+**AWS Integration:** Integrates with Amazon SQS for message queuing in workflows, uses Amazon DynamoDB for workflow state management, and leverages Amazon Comprehend for content analysis.
+
+**Use Cases:**
+- Automated ticket classification and routing for IT support
+- Requirements analysis and validation for software development
+- Change impact analysis for infrastructure and application changes
+- Dependency identification for project planning and risk assessment
+- Workflow optimization and bottleneck identification
 
 - **Endpoints**:
   - `/workflow/classify-ticket`: Classify support tickets and determine routing, priority, etc.
@@ -72,9 +158,20 @@ Classify tickets, analyze requirements, identify dependencies, and automate work
   - `/workflow/suggest-workflow`: Suggest workflow improvements
   - `/workflow/analyze-change-impact`: Analyze impact of proposed changes
 
-### 7. Content Personalization
+### 8. Content Personalization
 
-Personalize content based on user preferences, generate A/B test variations, and localize content.
+Deliver tailored content experiences by adapting information based on user preferences, behavior patterns, and contextual factors.
+
+This service enables dynamic content personalization through user preference modeling, A/B testing capabilities, and localization features. It can integrate with existing user management systems to leverage user profile data.
+
+**AWS Integration:** Uses Amazon Personalize for recommendation algorithms, Amazon DynamoDB for user preference storage, and Amazon S3 for content variation storage.
+
+**Use Cases:**
+- Personalized documentation and help content based on user expertise level
+- Dynamic website content adaptation based on user interests and behavior
+- A/B testing of content variations for marketing and product messaging
+- Localization and cultural adaptation of content for global audiences
+- Personalized learning experiences for educational platforms
 
 - **Endpoints**:
   - `/personalization/personalize`: Personalize content based on user profile
@@ -82,9 +179,20 @@ Personalize content based on user preferences, generate A/B test variations, and
   - `/personalization/localize`: Localize content for a specific target locale
   - `/personalization/personalize-recommendation`: Generate personalized recommendations
 
-### 8. Quality Assurance
+### 9. Quality Assurance
 
-Review code, scan for security issues, verify documentation, and predict bugs.
+Enhance software quality through AI-powered code review, security scanning, documentation verification, and bug prediction.
+
+This service applies LLMs and specialized models to various aspects of software quality assurance, helping teams identify issues early and maintain high-quality standards. It integrates with existing development workflows and CI/CD pipelines.
+
+**AWS Integration:** Integrates with AWS CodeBuild and CodePipeline for CI/CD workflows, uses Amazon S3 for artifact storage, and leverages Amazon Comprehend for code and documentation analysis.
+
+**Use Cases:**
+- Automated code review for quality and best practices
+- Security vulnerability scanning for early detection of issues
+- Documentation completeness and accuracy verification
+- Compliance checking against industry or organizational standards
+- Predictive bug detection based on code patterns and history
 
 - **Endpoints**:
   - `/quality/code-review`: Review code and identify issues

@@ -1,0 +1,27 @@
+# Quality Assurance Service Requirements
+
+# Web framework
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+
+# HTTP client
+httpx>=0.24.1
+
+# Code analysis
+pylint>=2.17.0  # Python code analysis
+bandit>=1.7.5  # Python security scanning
+flake8>=6.0.0  # Python linting
+
+# AWS SDK
+boto3>=1.28.0
+
+# AWS CodeGuru integration
+amazon-codeguru-reviewer>=1.0.0
+
+# Logging
+structlog>=23.1.0
+
+# LLM providers
+openai>=1.0.0
+anthropic>=0.5.0

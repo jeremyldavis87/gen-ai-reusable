@@ -9,6 +9,10 @@ import numpy as np
 import logging
 from pathlib import Path
 import time
+import uuid
+import sqlalchemy as sa
+from sqlalchemy import create_engine, Column, String, Integer, Float, Text, JSON, MetaData, Table
+from sqlalchemy.dialects.postgresql import JSONB
 
 from utilities.text_chunking import TextChunker
 
@@ -202,90 +206,92 @@ class EmbeddingService:
                 batch_indices = list(range(len(batch)))
                 cached_embeddings = [None] * len(batch)
             
-            # If there are texts to process (not in cache)
+            # If there are texts to process after checking cache
             if batch_to_process:
-                # Call API
-                headers = {
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                }
+                # Process the batch
+                batch_embeddings = await self._call_embedding_api(batch_to_process)
                 
-                payload = {
-                    "input": batch_to_process,
-                    "model": self.model,
-                    "dimensions": self.dimensions
-                }
-                
-                async with httpx.AsyncClient() as client:
-                    for attempt in range(self.retry_count):
-                        try:
-                            response = await client.post(
-                                self.endpoint,
-                                headers=headers,
-                                json=payload,
-                                timeout=self.timeout
-                            )
-                            
-                            # Handle rate limiting
-                            if response.status_code == 429:
-                                retry_after = int(response.headers.get("Retry-After", 1))
-                                logger.warning(f"Rate limited. Retrying after {retry_after} seconds.")
-                                await asyncio.sleep(retry_after)
-                                continue
-                            
-                            # Handle other errors
-                            if response.status_code != 200:
-                                logger.error(f"API error: {response.status_code} - {response.text}")
-                                if attempt < self.retry_count - 1:
-                                    wait_time = 2 ** attempt
-                                    logger.info(f"Retrying in {wait_time} seconds...")
-                                    await asyncio.sleep(wait_time)
-                                    continue
-                                else:
-                                    raise Exception(f"Failed to generate embeddings after {self.retry_count} attempts")
-                            
-                            result = response.json()
-                            
-                            # Update usage stats
-                            self.total_tokens_used += result.get("usage", {}).get("total_tokens", 0)
-                            self.total_api_calls += 1
-                            
-                            # Process the results
-                            embeddings = [item["embedding"] for item in result["data"]]
-                            
-                            # Cache the results if enabled
-                            if self.use_cache:
-                                for j, (text, embedding) in enumerate(zip(batch_to_process, embeddings)):
-                                    cache_key = self._get_cache_key(text)
-                                    self._save_to_cache(cache_key, embedding)
-                            
-                            # Place embeddings in their original positions
-                            for j, embedding in zip(batch_indices, embeddings):
-                                cached_embeddings[j] = embedding
-                            
-                            break
-                        
-                        except (httpx.ConnectTimeout, httpx.ReadTimeout) as e:
-                            logger.warning(f"Timeout error: {str(e)}")
-                            if attempt < self.retry_count - 1:
-                                wait_time = 2 ** attempt
-                                logger.info(f"Retrying in {wait_time} seconds...")
-                                await asyncio.sleep(wait_time)
-                            else:
-                                raise Exception(f"Failed to generate embeddings after {self.retry_count} attempts")
-                                
-                        except Exception as e:
-                            logger.error(f"Unexpected error: {str(e)}")
-                            if attempt < self.retry_count - 1:
-                                wait_time = 2 ** attempt
-                                logger.info(f"Retrying in {wait_time} seconds...")
-                                await asyncio.sleep(wait_time)
-                            else:
-                                raise
+                # Place the results in the right positions
+                for i, embedding in zip(batch_indices, batch_embeddings):
+                    cached_embeddings[i] = embedding
+                    
+                    # Cache the result if enabled
+                    if self.use_cache:
+                        self._save_to_cache(cache_keys[i], embedding)
             
+            # Add all embeddings from this batch
             all_embeddings.extend(cached_embeddings)
         
         return all_embeddings
+    
+    async def _call_embedding_api(self, texts: List[str]) -> List[List[float]]:
+        """Call the embedding API with proper error handling and retries."""
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        
+        payload = {
+            "input": texts,
+            "model": self.model,
+            "dimensions": self.dimensions
+        }
+        
+        async with httpx.AsyncClient() as client:
+            for attempt in range(self.retry_count):
+                try:
+                    response = await client.post(
+                        self.endpoint,
+                        headers=headers,
+                        json=payload,
+                        timeout=self.timeout
+                    )
+                    
+                    # Handle rate limiting
+                    if response.status_code == 429:
+                        retry_after = int(response.headers.get("Retry-After", 1))
+                        logger.warning(f"Rate limited. Retrying after {retry_after} seconds.")
+                        await asyncio.sleep(retry_after)
+                        continue
+                    
+                    # Handle other errors
+                    if response.status_code != 200:
+                        logger.error(f"API error: {response.status_code} - {response.text}")
+                        if attempt < self.retry_count - 1:
+                            # Exponential backoff
+                            wait_time = 2 ** attempt
+                            logger.info(f"Retrying in {wait_time} seconds...")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        else:
+                            raise Exception(f"Failed to generate embeddings after {self.retry_count} attempts")
+                    
+                    result = response.json()
+                    embeddings = [item["embedding"] for item in result["data"]]
+                    
+                    # Update usage stats
+                    self.total_tokens_used += result.get("usage", {}).get("total_tokens", 0)
+                    self.total_api_calls += 1
+                    
+                    return embeddings
+                
+                except (httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+                    logger.warning(f"Timeout error: {str(e)}")
+                    if attempt < self.retry_count - 1:
+                        wait_time = 2 ** attempt
+                        logger.info(f"Retrying in {wait_time} seconds...")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        raise Exception(f"Failed to generate embeddings after {self.retry_count} attempts")
+                        
+                except Exception as e:
+                    logger.error(f"Unexpected error: {str(e)}")
+                    if attempt < self.retry_count - 1:
+                        wait_time = 2 ** attempt
+                        logger.info(f"Retrying in {wait_time} seconds...")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        raise
     
     async def embed_chunks(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -459,53 +465,40 @@ class EmbeddingService:
     
     def _get_cache_key(self, text: str) -> str:
         """Generate a cache key for a text string."""
-        # Create a hash of the text and model information
-        text_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
-        model_key = f"{self.model}_{self.dimensions}"
-        return f"{model_key}_{text_hash}"
-    
-    def _get_cache_path(self, cache_key: str) -> Path:
-        """Get the file path for a cache key."""
-        return Path(self.cache_dir) / f"{cache_key}.json"
+        # Use a hash of the text as the cache key
+        text_hash = hashlib.md5(text.encode()).hexdigest()
+        model_info = f"{self.model}-{self.dimensions}"
+        return f"{model_info}-{text_hash}"
     
     def _get_from_cache(self, cache_key: str) -> Optional[List[float]]:
-        """Retrieve an embedding from the cache."""
+        """Get embedding from cache if it exists."""
         if not self.use_cache:
             return None
             
-        cache_path = self._get_cache_path(cache_key)
-        
+        cache_path = Path(self.cache_dir) / f"{cache_key}.json"
         if cache_path.exists():
             try:
                 with open(cache_path, "r") as f:
                     cached_data = json.load(f)
-                    # Check if the cache entry is for the same model and dimensions
-                    if (cached_data.get("model") == self.model and 
-                        cached_data.get("dimensions") == self.dimensions):
+                    # Check if the cached embedding has the expected dimensions
+                    if len(cached_data["embedding"]) == self.dimensions:
                         return cached_data["embedding"]
             except Exception as e:
-                logger.warning(f"Error reading from embedding cache: {str(e)}")
-                
+                logger.warning(f"Error reading from cache: {str(e)}")
+        
         return None
     
     def _save_to_cache(self, cache_key: str, embedding: List[float]) -> None:
-        """Save an embedding to the cache."""
+        """Save embedding to cache."""
         if not self.use_cache:
             return
             
-        cache_path = self._get_cache_path(cache_key)
-        
+        cache_path = Path(self.cache_dir) / f"{cache_key}.json"
         try:
             with open(cache_path, "w") as f:
-                cache_data = {
-                    "model": self.model,
-                    "dimensions": self.dimensions,
-                    "embedding": embedding,
-                    "timestamp": time.time()
-                }
-                json.dump(cache_data, f)
+                json.dump({"embedding": embedding, "timestamp": time.time()}, f)
         except Exception as e:
-            logger.warning(f"Error writing to embedding cache: {str(e)}")
+            logger.warning(f"Error writing to cache: {str(e)}")
     
     def clear_cache(self) -> None:
         """Clear the embedding cache."""
@@ -516,11 +509,440 @@ class EmbeddingService:
             cache_dir = Path(self.cache_dir)
             for cache_file in cache_dir.glob("*.json"):
                 cache_file.unlink()
+            logger.info(f"Cleared embedding cache in {self.cache_dir}")
         except Exception as e:
-            logger.warning(f"Error clearing embedding cache: {str(e)}")
+            logger.error(f"Error clearing cache: {str(e)}")
+
+    async def get_similar_texts(self, query: str, texts: List[str], top_k: int = 5) -> List[Tuple[int, float, str]]:
+        """
+        Find the most similar texts to a query using cosine similarity.
+        
+        Args:
+            query: The query text
+            texts: List of texts to compare against
+            top_k: Number of top matches to return
+            
+        Returns:
+            List of tuples (index, similarity_score, text)
+        """
+        # Generate embeddings
+        query_embedding = await self.generate_embedding(query)
+        text_embeddings = await self.generate_embeddings_batch(texts)
+        
+        # Calculate similarities
+        similarities = []
+        for i, embedding in enumerate(text_embeddings):
+            similarity = self._cosine_similarity(query_embedding, embedding)
+            similarities.append((i, similarity, texts[i]))
+        
+        # Sort by similarity (descending)
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        
+        # Return top k
+        return similarities[:top_k]
     
-    def get_usage_stats(self) -> Dict[str, Any]:
-        """Get usage statistics."""
-        return {
-            "total_tokens_used": self.total_tokens_used,
-            "total_api_calls": self.
+    def _cosine_similarity(self, a: List[float], b: List[float]) -> float:
+        """
+        Calculate cosine similarity between two vectors.
+        
+        Args:
+            a: First vector
+            b: Second vector
+            
+        Returns:
+            Cosine similarity (0-1)
+        """
+        a_np = np.array(a)
+        b_np = np.array(b)
+        
+        dot_product = np.dot(a_np, b_np)
+        norm_a = np.linalg.norm(a_np)
+        norm_b = np.linalg.norm(b_np)
+        
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+            
+        return dot_product / (norm_a * norm_b)
+
+class AWSBedrockEmbeddingService(EmbeddingService):
+    """
+    Service for generating embeddings using AWS Bedrock models.
+    """
+    
+    def __init__(
+        self,
+        model: str = "amazon.titan-embed-text-v1",
+        dimensions: int = 1024,
+        region: str = None,
+        aws_access_key_id: str = None,
+        aws_secret_access_key: str = None,
+        cache_dir: Optional[str] = None,
+        use_cache: bool = True,
+        batch_size: int = 8,
+        retry_count: int = 3,
+        timeout: float = 60.0,
+        chunker: Optional[TextChunker] = None
+    ):
+        """
+        Initialize the AWS Bedrock embedding service.
+        
+        Args:
+            model: AWS Bedrock model to use
+            dimensions: Output embedding dimensions
+            region: AWS region
+            aws_access_key_id: AWS access key ID
+            aws_secret_access_key: AWS secret access key
+            cache_dir: Directory to store embedding cache
+            use_cache: Whether to use caching
+            batch_size: Maximum number of texts to embed in a single API call
+            retry_count: Number of times to retry failed API calls
+            timeout: Timeout for API calls in seconds
+            chunker: Optional TextChunker instance for text chunking
+        """
+        # Import boto3 here to avoid dependency issues if not using AWS
+        import boto3
+        
+        self.model = model
+        self.dimensions = dimensions
+        
+        # AWS credentials
+        self.region = region or os.environ.get("AWS_REGION")
+        self.aws_access_key_id = aws_access_key_id or os.environ.get("AWS_ACCESS_KEY_ID")
+        self.aws_secret_access_key = aws_secret_access_key or os.environ.get("AWS_SECRET_ACCESS_KEY")
+        
+        if not self.region or not self.aws_access_key_id or not self.aws_secret_access_key:
+            raise ValueError("AWS credentials are required")
+        
+        # Create Bedrock client
+        self.bedrock_client = boto3.client(
+            'bedrock-runtime',
+            region_name=self.region,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key
+        )
+        
+        # Cache settings
+        self.use_cache = use_cache
+        if use_cache:
+            self.cache_dir = cache_dir or "./.embedding_cache"
+            os.makedirs(self.cache_dir, exist_ok=True)
+        
+        # Batch processing settings
+        self.batch_size = batch_size
+        self.retry_count = retry_count
+        self.timeout = timeout
+        
+        # Initialize text chunker if not provided
+        self.chunker = chunker or TextChunker()
+        
+        # Track usage
+        self.total_tokens_used = 0
+        self.total_api_calls = 0
+    
+    async def generate_embedding(self, text: str) -> List[float]:
+        """
+        Generate an embedding for a single text using AWS Bedrock.
+        
+        Args:
+            text: Text to embed
+            
+        Returns:
+            Embedding vector as a list of floats
+        """
+        # Check cache first if enabled
+        if self.use_cache:
+            cache_key = self._get_cache_key(text)
+            cached_embedding = self._get_from_cache(cache_key)
+            if cached_embedding:
+                return cached_embedding
+        
+        # Call Bedrock API
+        for attempt in range(self.retry_count):
+            try:
+                # Prepare request body based on the model
+                if self.model == "amazon.titan-embed-text-v1":
+                    request_body = json.dumps({
+                        "inputText": text,
+                        "dimensions": self.dimensions
+                    })
+                elif "cohere" in self.model:
+                    request_body = json.dumps({
+                        "texts": [text],
+                        "input_type": "search_document",
+                        "truncate": "END"
+                    })
+                else:
+                    raise ValueError(f"Unsupported model: {self.model}")
+                
+                # Make the API call
+                response = self.bedrock_client.invoke_model(
+                    modelId=self.model,
+                    contentType="application/json",
+                    accept="application/json",
+                    body=request_body
+                )
+                
+                # Parse response
+                response_body = json.loads(response['body'].read().decode())
+                
+                # Extract embedding based on the model
+                if self.model == "amazon.titan-embed-text-v1":
+                    embedding = response_body.get("embedding")
+                elif "cohere" in self.model:
+                    embedding = response_body.get("embeddings", [])[0]
+                else:
+                    raise ValueError(f"Unsupported model: {self.model}")
+                
+                # Update usage stats
+                self.total_api_calls += 1
+                
+                # Cache the result if enabled
+                if self.use_cache:
+                    self._save_to_cache(cache_key, embedding)
+                
+                return embedding
+                
+            except Exception as e:
+                logger.error(f"Error calling AWS Bedrock: {str(e)}")
+                if attempt < self.retry_count - 1:
+                    wait_time = 2 ** attempt
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise Exception(f"Failed to generate embedding after {self.retry_count} attempts")
+    
+    async def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for multiple texts efficiently using batching.
+        
+        Args:
+            texts: List of texts to embed
+            
+        Returns:
+            List of embedding vectors
+        """
+        # Process in batches
+        all_embeddings = []
+        for i in range(0, len(texts), self.batch_size):
+            batch = texts[i:i+self.batch_size]
+            batch_embeddings = []
+            
+            # Check cache for each text in the batch
+            if self.use_cache:
+                batch_to_process = []
+                batch_indices = []
+                
+                for j, text in enumerate(batch):
+                    cache_key = self._get_cache_key(text)
+                    cached = self._get_from_cache(cache_key)
+                    if cached:
+                        batch_embeddings.append(cached)
+                    else:
+                        batch_to_process.append(text)
+                        batch_indices.append(j)
+            else:
+                batch_to_process = batch
+                batch_indices = list(range(len(batch)))
+                batch_embeddings = [None] * len(batch)
+            
+            # If there are texts to process after checking cache
+            if batch_to_process:
+                # Process each text individually (Bedrock doesn't support true batching)
+                for j, text in enumerate(batch_to_process):
+                    embedding = await self.generate_embedding(text)
+                    
+                    # Place the result in the right position
+                    if self.use_cache and batch_indices:
+                        batch_embeddings[batch_indices[j]] = embedding
+                    else:
+                        batch_embeddings.append(embedding)
+            
+            # Add all embeddings from this batch
+            all_embeddings.extend(batch_embeddings)
+        
+        return all_embeddings
+
+class PostgreSQLVectorStore:
+    """
+    Store and query embeddings using PostgreSQL with pgvector extension.
+    """
+    
+    def __init__(
+        self,
+        connection_string: str,
+        table_name: str = "embeddings",
+        embedding_service: Optional[EmbeddingService] = None,
+        dimensions: int = 1024
+    ):
+        """
+        Initialize the PostgreSQL vector store.
+        
+        Args:
+            connection_string: PostgreSQL connection string
+            table_name: Name of the table to store embeddings
+            embedding_service: EmbeddingService instance for generating embeddings
+            dimensions: Dimensions of the embedding vectors
+        """
+        # Import SQLAlchemy here to avoid dependency issues if not using PostgreSQL
+        from sqlalchemy import create_engine, Column, String, Integer, Float, Text, JSON, MetaData, Table
+        from sqlalchemy.dialects.postgresql import JSONB
+        import sqlalchemy as sa
+        
+        self.connection_string = connection_string
+        self.table_name = table_name
+        self.embedding_service = embedding_service
+        self.dimensions = dimensions
+        
+        # Create SQLAlchemy engine
+        self.engine = create_engine(connection_string)
+        
+        # Create metadata
+        self.metadata = MetaData()
+        
+        # Define table
+        self.table = Table(
+            table_name,
+            self.metadata,
+            Column("id", String, primary_key=True),
+            Column("text", Text),
+            Column("metadata", JSONB),
+            Column("embedding", sa.ARRAY(Float)),
+            Column("created_at", sa.DateTime, default=sa.func.now())
+        )
+        
+        # Create table if it doesn't exist
+        self.metadata.create_all(self.engine)
+        
+        # Create pgvector extension and index if they don't exist
+        with self.engine.connect() as conn:
+            # Create pgvector extension
+            conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
+            
+            # Convert embedding column to vector type
+            conn.execute(sa.text(f"ALTER TABLE {table_name} ALTER COLUMN embedding TYPE vector({dimensions}) USING embedding::vector({dimensions})"))
+            
+            # Create index for faster similarity search
+            conn.execute(sa.text(f"CREATE INDEX IF NOT EXISTS {table_name}_embedding_idx ON {table_name} USING ivfflat (embedding vector_l2_ops)"))
+            
+            conn.commit()
+    
+    async def add_texts(
+        self,
+        texts: List[str],
+        metadatas: Optional[List[Dict[str, Any]]] = None,
+        ids: Optional[List[str]] = None
+    ) -> List[str]:
+        """
+        Add texts and their embeddings to the vector store.
+        
+        Args:
+            texts: List of texts to add
+            metadatas: Optional list of metadata dictionaries
+            ids: Optional list of IDs
+            
+        Returns:
+            List of IDs of the added texts
+        """
+        if not self.embedding_service:
+            raise ValueError("embedding_service is required to add texts")
+            
+        # Generate embeddings
+        embeddings = await self.embedding_service.generate_embeddings_batch(texts)
+        
+        # Generate IDs if not provided
+        if not ids:
+            ids = [str(uuid.uuid4()) for _ in range(len(texts))]
+            
+        # Use empty metadata if not provided
+        if not metadatas:
+            metadatas = [{} for _ in range(len(texts))]
+            
+        # Insert into database
+        with self.engine.connect() as conn:
+            for i, (text_id, text, metadata, embedding) in enumerate(zip(ids, texts, metadatas, embeddings)):
+                # Convert embedding to list if it's a numpy array
+                if isinstance(embedding, np.ndarray):
+                    embedding = embedding.tolist()
+                    
+                # Insert the document
+                conn.execute(
+                    self.table.insert().values(
+                        id=text_id,
+                        text=text,
+                        metadata=metadata,
+                        embedding=embedding
+                    )
+                )
+            
+            conn.commit()
+            
+        return ids
+    
+    async def similarity_search(
+        self,
+        query: str,
+        k: int = 5,
+        metadata_filter: Optional[Dict[str, Any]] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for similar texts using cosine similarity.
+        
+        Args:
+            query: Query text
+            k: Number of results to return
+            metadata_filter: Optional filter for metadata fields
+            
+        Returns:
+            List of dictionaries with id, text, metadata, and similarity score
+        """
+        if not self.embedding_service:
+            raise ValueError("embedding_service is required for similarity search")
+            
+        # Generate query embedding
+        query_embedding = await self.embedding_service.generate_embedding(query)
+        
+        # Convert to list if it's a numpy array
+        if isinstance(query_embedding, np.ndarray):
+            query_embedding = query_embedding.tolist()
+            
+        # Build query
+        from sqlalchemy.sql import text as sql_text
+        
+        query_str = f"""
+        SELECT id, text, metadata, 1 - (embedding <=> :embedding) as similarity
+        FROM {self.table_name}
+        """
+        
+        # Add metadata filter if provided
+        if metadata_filter:
+            conditions = []
+            for key, value in metadata_filter.items():
+                conditions.append(f"metadata->>'{{key}}' = '{{value}}'")
+            
+            if conditions:
+                query_str += " WHERE " + " AND ".join(conditions)
+        
+        # Add order by and limit
+        query_str += """
+        ORDER BY similarity DESC
+        LIMIT :k
+        """
+        
+        # Execute query
+        with self.engine.connect() as conn:
+            result = conn.execute(
+                sql_text(query_str),
+                {"embedding": query_embedding, "k": k}
+            )
+            
+            # Convert result to list of dictionaries
+            results = []
+            for row in result:
+                results.append({
+                    "id": row[0],
+                    "text": row[1],
+                    "metadata": row[2],
+                    "similarity": row[3]
+                })
+                
+        return results

@@ -1,4 +1,4 @@
-# Conversational Service Requirements
+# Search and Retrieval Service Requirements
 
 # Web framework
 fastapi>=0.100.0
@@ -11,16 +11,18 @@ httpx>=0.24.1
 
 # Database
 sqlalchemy>=2.0.0
-alembic>=1.11.1
 psycopg2-binary>=2.9.5  # PostgreSQL adapter
+pgvector>=0.2.0  # Vector extension for PostgreSQL
 
-# Authentication
-python-jose>=3.3.0
-passlib>=1.7.4
-bcrypt>=4.0.1
+# Vector embeddings
+numpy>=1.24.0
+scipy>=1.10.0
 
 # AWS SDK
 boto3>=1.28.0
+
+# AWS services
+amazon-bedrock-runtime>=1.0.0  # For embeddings
 
 # Logging
 structlog>=23.1.0
@@ -28,6 +30,3 @@ structlog>=23.1.0
 # LLM providers
 openai>=1.0.0
 anthropic>=0.5.0
-
-# Environment variables
-python-dotenv>=1.0.0

@@ -1,0 +1,27 @@
+# Format Conversion Service Requirements
+
+# Web framework
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+
+# HTTP client
+httpx>=0.24.1
+
+# Data formats
+pyyaml>=6.0.1
+
+# AWS SDK
+boto3>=1.28.0
+awscrt>=0.16.7
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Type hints
+typing-extensions>=4.8.0
+
+# LLM providers
+openai>=1.0.0
+anthropic>=0.5.0

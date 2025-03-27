@@ -199,41 +199,54 @@ class TextChunker:
     
     def _semantic_chunking(self, text: str) -> List[str]:
         """
-        Attempt to chunk text based on semantic meaning by considering section headers,
-        paragraph breaks, and sentence boundaries.
+        Chunk text based on semantic units, attempting to preserve context and meaning.
+        This method combines sentence and paragraph chunking with additional heuristics.
         """
-        # Look for section headers (patterns like "## Title" or "1.2 Title")
-        section_pattern = r'(?:\n|\A)(?:#{1,6}|\d+(?:\.\d+)*)\s+[^\n]+'
-        sections = re.split(section_pattern, text)
-        section_headers = re.findall(section_pattern, text)
-        
-        # Recombine sections with their headers
-        content_sections = []
-        for i, section in enumerate(sections):
-            if i > 0 and i-1 < len(section_headers):
-                content_sections.append(section_headers[i-1] + section)
-            else:
-                content_sections.append(section)
+        # First split into paragraphs
+        paragraphs = re.split(r'\n\s*\n', text)
         
         chunks = []
         current_chunk = ""
+        current_semantic_unit = ""
         
-        for section in content_sections:
-            # If the section itself is larger than max_chunk_size, 
-            # we need to break it down further with paragraph chunking
-            if len(section) > self.max_chunk_size:
-                section_chunks = self._paragraph_chunking(section)
-                for chunk in section_chunks:
-                    chunks.append(chunk)
+        for paragraph in paragraphs:
+            # Skip empty paragraphs
+            if not paragraph.strip():
                 continue
             
-            # If adding this section would exceed max size, start a new chunk
-            if len(current_chunk) + len(section) > self.max_chunk_size and len(current_chunk) >= self.min_chunk_size:
-                chunks.append(current_chunk)
-                current_chunk = ""
+            # Split paragraph into sentences
+            sentences = sent_tokenize(paragraph)
             
-            # Add the section to the current chunk
-            current_chunk += "\n\n" + section if current_chunk else section
+            # Process each sentence in the paragraph
+            for sentence in sentences:
+                # Check if adding this sentence would exceed max size
+                if len(current_chunk) + len(sentence) > self.max_chunk_size and len(current_chunk) >= self.min_chunk_size:
+                    chunks.append(current_chunk)
+                    
+                    # Start new chunk with overlap using the last semantic unit if possible
+                    if self.overlap_size > 0 and current_semantic_unit:
+                        current_chunk = current_semantic_unit
+                    else:
+                        current_chunk = ""
+                    
+                    current_semantic_unit = ""
+                
+                # Add the sentence to the current chunk
+                current_chunk += " " + sentence if current_chunk else sentence
+                
+                # Update the current semantic unit
+                # If this sentence appears to end a thought (e.g., period, question mark, exclamation point)
+                if re.search(r'[.!?]\s*$', sentence):
+                    # This sentence completes a thought, so update the semantic unit
+                    current_semantic_unit = sentence
+                else:
+                    # This sentence is part of an ongoing thought, so add it to the current semantic unit
+                    current_semantic_unit += " " + sentence if current_semantic_unit else sentence
+            
+            # Add paragraph break if not at the end of a chunk
+            if current_chunk and not current_chunk.endswith("\n"):
+                current_chunk += "\n\n"
+                current_semantic_unit += "\n\n" if current_semantic_unit else ""
         
         # Add the last chunk if it's not empty
         if current_chunk:
@@ -241,66 +254,93 @@ class TextChunker:
         
         return chunks
     
-    def estimate_token_count(self, text: str) -> int:
+    def chunk_document(self, document: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Estimate the number of tokens in a text string.
-        This is a rough approximation based on word count.
+        Chunk a document with metadata.
         
         Args:
-            text: The text to estimate token count for
-            
+            document: Dictionary containing 'text' and optional metadata
+        
         Returns:
-            Estimated token count
+            List of chunk dictionaries with text and metadata
         """
-        # A simple approximation: 1 token ≈ 4 characters for English text
-        return len(text) // 4
+        text = document.get("text", "")
+        metadata = {k: v for k, v in document.items() if k != "text"}
+        
+        return self.chunk_text(text, metadata)
     
-    def chunk_document(self, document: Dict[str, Any], text_field: str = "content") -> List[Dict[str, Any]]:
+    def chunk_documents(self, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Chunk a document object, preserving metadata.
+        Chunk multiple documents with metadata.
         
         Args:
-            document: Document object with text and metadata
-            text_field: Field name containing the text to chunk
-            
+            documents: List of dictionaries, each containing 'text' and optional metadata
+        
         Returns:
-            List of document chunks
-        """
-        if text_field not in document:
-            raise ValueError(f"Document does not contain field: {text_field}")
-        
-        # Create a copy of the document without the text field for metadata
-        metadata = {k: v for k, v in document.items() if k != text_field}
-        
-        # Chunk the text
-        return self.chunk_text(document[text_field], metadata)
-    
-    def chunk_collection(
-        self, 
-        documents: List[Dict[str, Any]], 
-        text_field: str = "content"
-    ) -> List[Dict[str, Any]]:
-        """
-        Chunk a collection of documents.
-        
-        Args:
-            documents: List of document objects
-            text_field: Field name containing the text to chunk
-            
-        Returns:
-            List of all document chunks
+            List of chunk dictionaries with text and metadata
         """
         all_chunks = []
         
-        for i, doc in enumerate(documents):
-            # Add document index to metadata
-            doc_with_index = doc.copy()
-            if "metadata" not in doc_with_index:
-                doc_with_index["metadata"] = {}
-            doc_with_index["metadata"]["document_index"] = i
-            
-            # Chunk the document
-            chunks = self.chunk_document(doc_with_index, text_field)
+        for doc in documents:
+            chunks = self.chunk_document(doc)
             all_chunks.extend(chunks)
         
         return all_chunks
+    
+    def estimate_token_count(self, text: str) -> int:
+        """
+        Estimate the number of tokens in a text string.
+        This is a simple estimation based on whitespace and punctuation.
+        
+        Args:
+            text: The text to estimate token count for
+        
+        Returns:
+            Estimated token count
+        """
+        # Simple estimation: split on whitespace and count
+        # This is a rough approximation; actual tokenization depends on the model
+        words = re.findall(r'\w+|[^\w\s]', text)
+        
+        # Adjust for tokenization peculiarities
+        # Typically, a token is ~4 characters on average for English text
+        char_count = len(text)
+        estimated_tokens = max(len(words), char_count // 4)
+        
+        return estimated_tokens
+    
+    def optimize_chunk_size(self, text: str, target_token_count: int = 1024) -> List[str]:
+        """
+        Dynamically adjust chunking parameters to target a specific token count per chunk.
+        
+        Args:
+            text: The text to chunk
+            target_token_count: Target number of tokens per chunk
+        
+        Returns:
+            List of optimized chunks
+        """
+        # Estimate characters per token for this text
+        total_chars = len(text)
+        estimated_tokens = self.estimate_token_count(text)
+        chars_per_token = total_chars / max(1, estimated_tokens)
+        
+        # Calculate optimal max_chunk_size based on target token count
+        optimal_chunk_size = int(target_token_count * chars_per_token)
+        
+        # Save original settings
+        original_max_size = self.max_chunk_size
+        original_min_size = self.min_chunk_size
+        
+        # Apply optimized settings
+        self.max_chunk_size = optimal_chunk_size
+        self.min_chunk_size = optimal_chunk_size // 4  # 25% of max as minimum
+        
+        # Perform chunking
+        chunks = self._semantic_chunking(text)
+        
+        # Restore original settings
+        self.max_chunk_size = original_max_size
+        self.min_chunk_size = original_min_size
+        
+        return chunks
