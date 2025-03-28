@@ -76,6 +76,23 @@ async def format_output(text: str, format_type: OutputFormat, instructions: str,
     """Format the text according to the specified output format."""
     llm_client = LLMClient()
     
+    # Check if mock responses are enabled
+    if os.getenv("MOCK_LLM_RESPONSES", "false").lower() == "true":
+        logger.info("Using mock LLM responses for testing")
+        # Construct system prompt based on format type
+        system_prompts = {
+            OutputFormat.JSON: "You are a precise JSON formatter.",
+            OutputFormat.YAML: "You are a precise YAML formatter.",
+            OutputFormat.CSV: "You are a precise CSV formatter.",
+            OutputFormat.XML: "You are a precise XML formatter.",
+            OutputFormat.MARKDOWN: "You are a precise Markdown formatter.",
+            OutputFormat.HTML: "You are a precise HTML formatter.",
+            OutputFormat.SQL: "You are a precise SQL formatter."
+        }
+        system_prompt = system_prompts.get(format_type, "You are a precise formatter.")
+        return llm_client._generate_mock_response(text, system_prompt)
+    
+    # If not using mock responses, proceed with normal API calls
     # Construct system prompt based on format type
     system_prompts = {
         OutputFormat.JSON: "You are a precise JSON formatter. Convert the provided text into valid JSON format according to the instructions. Ensure the output is properly structured and valid JSON.",

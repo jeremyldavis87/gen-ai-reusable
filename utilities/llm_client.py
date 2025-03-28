@@ -5,6 +5,9 @@ import httpx
 import json
 import asyncio
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LLMProvider(str, Enum):
     GPT4O = "gpt4o"
@@ -30,11 +33,20 @@ class LLMClient:
                       temperature: float = 0.7,
                       max_tokens: int = 1000,
                       tools: Optional[List[Dict[str, Any]]] = None) -> str:
-        """Generate text from LLM."""
-        if self.provider == LLMProvider.GPT4O:
-            return await self._generate_openai(prompt, system_prompt, temperature, max_tokens, tools)
-        elif self.provider == LLMProvider.CLAUDE:
+        """Generate text using the selected LLM provider."""
+        provider = os.getenv("DEFAULT_LLM_PROVIDER", "CLAUDE")
+        
+        # For local testing without API keys, return mock responses
+        if os.getenv("MOCK_LLM_RESPONSES", "false").lower() == "true":
+            logger.info("Using mock LLM responses for testing")
+            return self._generate_mock_response(prompt, system_prompt)
+        
+        if provider == "CLAUDE":
             return await self._generate_anthropic(prompt, system_prompt, temperature, max_tokens)
+        elif provider == "GPT4O":
+            return await self._generate_openai(prompt, system_prompt, temperature, max_tokens, tools)
+        else:
+            raise ValueError(f"Unsupported LLM provider: {provider}")
     
     async def _generate_openai(self, 
                               prompt: str, 
@@ -102,6 +114,43 @@ class LLMClient:
             )
             response_data = response.json()
             return response_data["content"][0]["text"]
+
+    def _generate_mock_response(self, prompt: str, system_prompt: str = None) -> str:
+        """Generate a mock response for testing without API keys."""
+        # Extract the format from the system prompt if available
+        format_type = "json"  # Default format
+        if system_prompt and "JSON formatter" in system_prompt:
+            format_type = "json"
+        elif system_prompt and "YAML formatter" in system_prompt:
+            format_type = "yaml"
+        elif system_prompt and "CSV formatter" in system_prompt:
+            format_type = "csv"
+        elif system_prompt and "XML formatter" in system_prompt:
+            format_type = "xml"
+        elif system_prompt and "Markdown formatter" in system_prompt:
+            format_type = "markdown"
+        elif system_prompt and "HTML formatter" in system_prompt:
+            format_type = "html"
+        elif system_prompt and "SQL formatter" in system_prompt:
+            format_type = "sql"
+            
+        # Generate mock responses based on format type
+        if format_type == "json":
+            return '{"name": "John Smith", "age": 35, "occupation": "Software Engineer", "skills": ["Python", "JavaScript", "Docker"]}'
+        elif format_type == "yaml":
+            return 'name: John Smith\nage: 35\noccupation: Software Engineer\nskills:\n  - Python\n  - JavaScript\n  - Docker'
+        elif format_type == "csv":
+            return 'name,age,occupation,skills\nJohn Smith,35,Software Engineer,"Python, JavaScript, Docker"'
+        elif format_type == "xml":
+            return '<person>\n  <name>John Smith</name>\n  <age>35</age>\n  <occupation>Software Engineer</occupation>\n  <skills>\n    <skill>Python</skill>\n    <skill>JavaScript</skill>\n    <skill>Docker</skill>\n  </skills>\n</person>'
+        elif format_type == "markdown":
+            return '# John Smith\n\n**Age:** 35\n\n**Occupation:** Software Engineer\n\n## Skills\n- Python\n- JavaScript\n- Docker'
+        elif format_type == "html":
+            return '<div class="person">\n  <h1>John Smith</h1>\n  <p><strong>Age:</strong> 35</p>\n  <p><strong>Occupation:</strong> Software Engineer</p>\n  <h2>Skills</h2>\n  <ul>\n    <li>Python</li>\n    <li>JavaScript</li>\n    <li>Docker</li>\n  </ul>\n</div>'
+        elif format_type == "sql":
+            return 'CREATE TABLE person (\n  name VARCHAR(100),\n  age INT,\n  occupation VARCHAR(100)\n);\n\nINSERT INTO person (name, age, occupation) VALUES ("John Smith", 35, "Software Engineer");\n\nCREATE TABLE skills (\n  person_name VARCHAR(100),\n  skill VARCHAR(100)\n);\n\nINSERT INTO skills (person_name, skill) VALUES ("John Smith", "Python");\nINSERT INTO skills (person_name, skill) VALUES ("John Smith", "JavaScript");\nINSERT INTO skills (person_name, skill) VALUES ("John Smith", "Docker");'
+        else:
+            return "Mock response for testing purposes."
 
 
 # utilities/logging_utils.py
