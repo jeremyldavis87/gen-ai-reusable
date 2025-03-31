@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 
 """
-Simplified Format Conversion Service for local testing
+Mock Format Conversion Service for Local Development
 
 This script provides a simplified version of the Format Conversion Service
-that doesn't rely on external API calls for testing purposes.
+that generates mock responses without making external API calls. It's useful for:
+- Local development without API keys
+- Testing client applications
+- Development environment setup
+- Quick prototyping
+
+Usage:
+    python mock_server.py
+    # Server will start on http://localhost:8000
+
+The server implements the same API endpoints as the main service but returns
+predefined mock responses. This allows for development and testing without
+dependencies on external services or API keys.
 """
 
 import os

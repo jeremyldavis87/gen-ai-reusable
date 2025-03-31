@@ -1,20 +1,24 @@
 # Web framework
-fastapi>=0.100.0
-uvicorn>=0.22.0
-pydantic>=2.0.0
-python-multipart>=0.0.6  # For form data handling
-
-# HTTP client
-httpx>=0.24.1
-
-# Database
-sqlalchemy>=2.0.0
-alembic>=1.11.1
-
-# Authentication
-python-jose>=3.3.0  # For JWT
-passlib>=1.7.4      # For password hashing
-bcrypt>=4.0.1       # Password hashing algorithm
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.0
+python-dotenv>=0.19.0
+pytest>=6.2.5
+httpx>=0.24.0
+pyyaml>=6.0.1
+python-multipart>=0.0.6
+aiofiles>=0.8.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+sqlalchemy>=1.4.0
+alembic>=1.7.0
+psycopg2-binary>=2.9.0
+redis>=4.0.0
+celery>=5.2.0
+boto3>=1.26.0
+openai>=1.0.0
+tiktoken>=0.5.0
+tenacity>=8.0.0
 
 # Document processing
 PyPDF2>=3.0.0
@@ -26,12 +30,22 @@ openpyxl>=3.1.2     # For Excel processing
 # Logging
 structlog>=23.1.0
 
+# Environment variables
+python-dotenv>=1.0.0
+
 # LLM providers
-openai>=1.0.0        # For GPT-4o
 anthropic>=0.5.0     # For Claude Sonnet 3.5
 
+# LangChain
+langchain>=0.3.21
+langchain-openai>=0.3.11
+langchain-anthropic>=0.3.10
+langchain-community>=0.3.20
+langchain-core>=0.3.49
+langchain-text-splitters>=0.3.7
+langsmith>=0.3.19
+
 # Testing
-pytest>=7.3.1
 pytest-asyncio>=0.21.0
 
 # Development

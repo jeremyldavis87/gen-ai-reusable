@@ -1,0 +1,123 @@
+version: '3.8'
+
+services:
+  format_conversion_service:
+    build:
+      context: ./services/format_conversion_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/format_conversion_service:/app
+    networks:
+      - gen-ai-network
+
+  classification_service:
+    build:
+      context: ./services/classification_service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/classification_service:/app
+    networks:
+      - gen-ai-network
+
+  workflow_service:
+    build:
+      context: ./services/workflow_service
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/workflow_service:/app
+    networks:
+      - gen-ai-network
+
+  search_service:
+    build:
+      context: ./services/search_service
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/search_service:/app
+    networks:
+      - gen-ai-network
+
+  quality_service:
+    build:
+      context: ./services/quality_service
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/quality_service:/app
+    networks:
+      - gen-ai-network
+
+  personalization_service:
+    build:
+      context: ./services/personalization_service
+      dockerfile: Dockerfile
+    ports:
+      - "8006:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/personalization_service:/app
+    networks:
+      - gen-ai-network
+
+  document_extraction:
+    build:
+      context: ./services/document_extraction
+      dockerfile: Dockerfile
+    ports:
+      - "8007:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/document_extraction:/app
+    networks:
+      - gen-ai-network
+
+  conversational_service:
+    build:
+      context: ./services/conversational_service
+      dockerfile: Dockerfile
+    ports:
+      - "8008:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/conversational_service:/app
+    networks:
+      - gen-ai-network
+
+  code_service:
+    build:
+      context: ./services/code_service
+      dockerfile: Dockerfile
+    ports:
+      - "8009:8000"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./services/code_service:/app
+    networks:
+      - gen-ai-network
+
+networks:
+  gen-ai-network:
+    driver: bridge 

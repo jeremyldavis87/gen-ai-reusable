@@ -84,6 +84,14 @@ class LocalizationRequest(BaseModel):
     cultural_notes: Optional[Dict[str, Any]] = Field(None, description="Cultural considerations")
     preserve_elements: Optional[List[str]] = Field(None, description="Elements to preserve untranslated")
 
+class LocalizationResponse(BaseModel):
+    request_id: str = Field(..., description="Unique identifier for the request")
+    localized_content: str = Field(..., description="Localized content")
+    source_locale: str = Field(..., description="Source locale")
+    target_locale: str = Field(..., description="Target locale")
+    cultural_adaptations: Optional[List[str]] = Field(None, description="List of cultural adaptations made")
+    warnings: Optional[List[str]] = Field(None, description="Any warnings or notes about the localization")
+
 # Routes
 @app.post("/personalize", response_model=PersonalizationResponse)
 async def personalize_content(
@@ -326,68 +334,62 @@ async def generate_ab_test_variations(
         logger.error(f"Error generating A/B test variations: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error generating A/B test variations: {str(e)}")
 
-@app.post("/localize", response_model=JSONResponse)
+@app.post("/localize", response_model=LocalizationResponse)
 async def localize_content(
     request: LocalizationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Localize content for a specific target locale with cultural adaptation."""
+    """Localize content for a specific locale and culture."""
     request_id = str(uuid.uuid4())
     
     try:
         logger.info(
             "Content localization request received", 
             request_id, 
-            {"source_locale": request.source_locale, "target_locale": request.target_locale}
+            {
+                "content_type": request.content_type,
+                "source_locale": request.source_locale,
+                "target_locale": request.target_locale
+            }
         )
         
         # Create LLM client
         llm_client = LLMClient()
         
-        # Format preserve elements if provided
+        # Build the system prompt
+        system_prompt = f"""
+        You are an expert content localization system. Localize the provided {request.content_type.value} content from {request.source_locale} to {request.target_locale}.
+        Consider cultural nuances, idioms, and regional preferences while maintaining the original meaning and intent.
+        """
+        
+        # Format cultural notes if provided
+        cultural_notes_str = ""
+        if request.cultural_notes:
+            cultural_notes_str = "Cultural Considerations:\n"
+            for key, value in request.cultural_notes.items():
+                cultural_notes_str += f"- {key}: {value}\n"
+        
+        # Format elements to preserve if provided
         preserve_str = ""
         if request.preserve_elements:
             preserve_str = "Elements to preserve untranslated:\n"
             for element in request.preserve_elements:
                 preserve_str += f"- {element}\n"
         
-        # Format cultural notes if provided
-        cultural_str = ""
-        if request.cultural_notes:
-            cultural_str = "Cultural Considerations:\n"
-            for key, value in request.cultural_notes.items():
-                cultural_str += f"- {key}: {value}\n"
-        
-        # Build the system prompt
-        system_prompt = f"""
-        You are an expert content localization specialist. Adapt the provided {request.content_type.value} content from {request.source_locale} to {request.target_locale}.
-        This is not just translation - adapt cultural references, idioms, examples, and tone to be appropriate for the target locale.
-        Preserve the core message and intent while making the content feel natural and culturally appropriate.
-        """
-        
         # Build the user prompt
         prompt = f"""
-        Please localize this content from {request.source_locale} to {request.target_locale}:
-        
-        Original Content ({request.source_locale}):
+        Localize this content from {request.source_locale} to {request.target_locale}:
+
         {request.content}
-        
-        {cultural_str}
-        
+
+        {cultural_notes_str}
         {preserve_str}
         
         Format your response as a valid JSON object with this structure:
         {{
             "localized_content": "The localized content",
-            "adaptations": [
-                {{
-                    "original": "Original text/reference",
-                    "adapted": "Adapted text/reference",
-                    "explanation": "Explanation of the adaptation"
-                }},
-                ...
-            ],
-            "notes": "Any additional notes or considerations"
+            "cultural_adaptations": ["List of cultural adaptations made"],
+            "warnings": ["Any warnings or notes about the localization"]
         }}
         """
         
@@ -395,7 +397,7 @@ async def localize_content(
         result = await llm_client.generate(
             prompt=prompt,
             system_prompt=system_prompt,
-            temperature=0.4,
+            temperature=0.3,  # Lower temperature for more accurate translation
             max_tokens=2000
         )
         
@@ -411,19 +413,26 @@ async def localize_content(
                 # If no JSON found, try to parse the entire response
                 localization_data = json.loads(result)
             
-            return JSONResponse(
-                content={
-                    "request_id": request_id,
-                    "source_locale": request.source_locale,
-                    "target_locale": request.target_locale,
-                    "original_content": request.content,
-                    "localization_result": localization_data
-                }
+            return LocalizationResponse(
+                request_id=request_id,
+                localized_content=localization_data.get("localized_content", ""),
+                source_locale=request.source_locale,
+                target_locale=request.target_locale,
+                cultural_adaptations=localization_data.get("cultural_adaptations"),
+                warnings=localization_data.get("warnings")
             )
             
         except json.JSONDecodeError as e:
             logger.error(f"Error parsing localization result: {str(e)}", request_id)
-            raise HTTPException(status_code=500, detail=f"Error parsing localization result: {str(e)}")
+            
+            # If parsing fails, assume the result is the localized content directly
+            return LocalizationResponse(
+                request_id=request_id,
+                localized_content=result,
+                source_locale=request.source_locale,
+                target_locale=request.target_locale,
+                warnings=["Error parsing structured response, using raw output"]
+            )
             
     except Exception as e:
         logger.error(f"Error localizing content: {str(e)}", request_id)

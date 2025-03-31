@@ -14,8 +14,6 @@ Leverage LLMs to automate various aspects of the software development lifecycle,
 
 This service utilizes advanced prompt engineering techniques to generate high-quality code, documentation, and tests. It supports multiple programming languages and can be customized for specific coding standards and patterns.
 
-**AWS Integration:** Uses Amazon S3 for storing code templates and Amazon Comprehend for analyzing code requirements. Deployed as containerized microservices on AWS infrastructure.
-
 **Use Cases:**
 - Rapid prototyping of new features based on natural language specifications
 - Automated documentation generation for legacy codebases
@@ -35,8 +33,6 @@ This service utilizes advanced prompt engineering techniques to generate high-qu
 Transform unstructured documents into structured, machine-readable data by extracting key information using advanced NLP techniques.
 
 This service processes various document formats (PDF, DOCX, images via OCR) and extracts structured information based on specified schemas. It combines LLM capabilities with rule-based extraction for optimal accuracy.
-
-**AWS Integration:** Leverages Amazon Textract for initial document processing, Amazon Comprehend for entity recognition, and stores extracted data in Amazon RDS Aurora PostgreSQL with appropriate schemas.
 
 **Use Cases:**
 - Automated processing of invoices, receipts, and financial documents
@@ -282,6 +278,31 @@ The platform includes several shared utilities for common functionality:
 4. Run the application:
    ```bash
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Local Development
+
+1. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Set up environment variables by copying the sample file:
+   ```bash
+   cp .env_sample .env
+   # Edit .env with your configuration
+   ```
+
+3. Run a specific service locally using the run_local.py script:
+   ```bash
+   # Run the Format Conversion Service
+   python run_local.py format
+   
+   # Run with auto-reload for development
+   python run_local.py format --reload
+   
+   # Specify host and port
+   python run_local.py format --host 127.0.0.1 --port 8080
    ```
 
 ### Docker Deployment

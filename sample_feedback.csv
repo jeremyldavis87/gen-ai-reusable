@@ -1,0 +1,11 @@
+ feedback_id,feedback_text,date,user_id
+1,"The new interface is amazing! It's much more intuitive and faster to use.",2024-03-15,user123
+2,"Having trouble with the payment system. It keeps showing an error message.",2024-03-15,user456
+3,"The product meets my needs, but the documentation could be improved.",2024-03-15,user789
+4,"Excellent customer support team! They resolved my issue quickly.",2024-03-15,user101
+5,"The app crashes frequently when uploading large files.",2024-03-15,user102
+6,"The pricing is reasonable for the features offered.",2024-03-15,user103
+7,"Can't log in to my account. Keep getting 'invalid credentials' error.",2024-03-15,user104
+8,"The new feature is exactly what I needed. Great work!",2024-03-15,user105
+9,"The system is running slower than usual today.",2024-03-15,user106
+10,"The UI is clean and professional. Very impressed!",2024-03-15,user107

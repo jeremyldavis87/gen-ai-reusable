@@ -34,7 +34,7 @@ class ConversationModel(Base):
     type = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
     context = Column(JSON, nullable=True)
     
     messages = relationship("MessageModel", back_populates="conversation", cascade="all, delete-orphan")
@@ -47,7 +47,7 @@ class MessageModel(Base):
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
     
     conversation = relationship("ConversationModel", back_populates="messages")
 
@@ -70,7 +70,7 @@ class KnowledgeBaseModel(Base):
     category = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)
 
 class SummaryModel(Base):
     __tablename__ = "summaries"
@@ -103,7 +103,7 @@ class Message(BaseModel):
     role: MessageRole = Field(..., description="Role of the message sender")
     content: str = Field(..., description="Content of the message")
     timestamp: Optional[datetime] = Field(None, description="Timestamp of the message")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata for the message")
+    meta_data: Optional[Dict[str, Any]] = Field(None, description="Additional metadata for the message")
     
     @validator('content')
     def content_not_empty(cls, v):
@@ -121,7 +121,7 @@ class KnowledgeBaseEntry(BaseModel):
     title: str = Field(..., description="Title of the knowledge base entry")
     content: str = Field(..., description="Content of the knowledge base entry")
     category: Optional[str] = Field(None, description="Category of the knowledge base entry")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+    meta_data: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
 
 class Intent(BaseModel):
     name: str = Field(..., description="Name of the detected intent")
@@ -376,7 +376,7 @@ async def retrieve_knowledge_base_entries(knowledge_base_ids: List[str], db: Ses
                 "title": kb_entry.title,
                 "content": kb_entry.content,
                 "category": kb_entry.category,
-                "metadata": kb_entry.metadata
+                "meta_data": kb_entry.meta_data
             })
     return entries
 
@@ -408,7 +408,7 @@ async def save_conversation(
                 role=msg.role.value,
                 content=msg.content,
                 created_at=msg.timestamp or datetime.utcnow(),
-                metadata=msg.metadata
+                meta_data=msg.meta_data
             )
             db.add(db_message)
     else:
@@ -433,7 +433,7 @@ async def save_conversation(
                     role=msg.role.value,
                     content=msg.content,
                     created_at=msg_time,
-                    metadata=msg.metadata
+                    meta_data=msg.meta_data
                 )
                 db.add(db_message)
     
@@ -637,7 +637,7 @@ async def summarize_conversation(
                 role=MessageRole(msg.role),
                 content=msg.content,
                 timestamp=msg.created_at,
-                metadata=msg.metadata
+                meta_data=msg.meta_data
             )
             for msg in messages
         ]
@@ -790,7 +790,7 @@ async def analyze_dialogue(
                 role=MessageRole(msg.role),
                 content=msg.content,
                 timestamp=msg.created_at,
-                metadata=msg.metadata
+                meta_data=msg.meta_data
             )
             for msg in messages
         ]
@@ -1052,7 +1052,7 @@ async def multi_turn_qa(
                     role=MessageRole(msg.role),
                     content=msg.content,
                     timestamp=msg.created_at,
-                    metadata=msg.metadata
+                    meta_data=msg.meta_data
                 )
                 for msg in db.query(MessageModel).filter(
                     MessageModel.conversation_id == conversation_id
@@ -1133,7 +1133,7 @@ async def add_knowledge_base_entry(
             title=entry.title,
             content=entry.content,
             category=entry.category,
-            metadata=entry.metadata
+            meta_data=entry.meta_data
         )
         
         db.add(kb_entry)
@@ -1146,7 +1146,7 @@ async def add_knowledge_base_entry(
                 "title": kb_entry.title,
                 "content": kb_entry.content,
                 "category": kb_entry.category,
-                "metadata": kb_entry.metadata
+                "meta_data": kb_entry.meta_data
             }
         )
     except Exception as e:
@@ -1170,7 +1170,7 @@ async def get_knowledge_base_entry(
             "title": entry.title,
             "content": entry.content,
             "category": entry.category,
-            "metadata": entry.metadata
+            "meta_data": entry.meta_data
         }
     )
 
@@ -1209,7 +1209,7 @@ async def get_conversation(
         "type": conversation.type,
         "created_at": conversation.created_at,
         "updated_at": conversation.updated_at,
-        "metadata": conversation.metadata,
+        "meta_data": conversation.meta_data,
         "context": conversation.context
     }
     
@@ -1224,7 +1224,7 @@ async def get_conversation(
                 "role": msg.role,
                 "content": msg.content,
                 "created_at": msg.created_at,
-                "metadata": msg.metadata
+                "meta_data": msg.meta_data
             }
             for msg in messages
         ]
