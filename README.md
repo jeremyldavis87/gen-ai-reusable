@@ -52,8 +52,6 @@ Automatically classify and categorize content according to customizable taxonomi
 
 This service uses fine-tuned language models to accurately classify content across multiple dimensions. It supports both single-label and multi-label classification, with confidence scores for each category.
 
-**AWS Integration:** Utilizes Amazon Comprehend for initial content analysis, stores classification models and taxonomies in Amazon S3, and uses Amazon DynamoDB for classification results and metadata.
-
 **Use Cases:**
 - Content moderation for user-generated content platforms
 - Automatic tagging and categorization of articles and documents
@@ -96,8 +94,6 @@ Transform unstructured text into structured, formatted outputs according to spec
 
 This service converts raw text and documents into various structured formats using advanced LLM capabilities. It handles texts of any size through intelligent chunking and can process both simple and complex conversion tasks with high accuracy.
 
-**AWS Integration:** Utilizes Amazon Bedrock for LLM-based text structuring, Amazon S3 for storing conversion templates and large documents, and Amazon RDS Aurora PostgreSQL for caching common conversion patterns.
-
 **Use Cases:**
 - Converting unstructured business documents into structured data formats
 - Transforming legacy data formats into modern standards
@@ -115,8 +111,6 @@ This service converts raw text and documents into various structured formats usi
 Implement advanced semantic search capabilities that understand the meaning and context of queries beyond simple keyword matching.
 
 This service combines vector embeddings, LLM-based relevance scoring, and traditional search techniques to provide highly relevant search results. It includes features for document comparison, query reformulation, and knowledge base querying.
-
-**AWS Integration:** Utilizes Amazon RDS Aurora PostgreSQL with pgvector extension for vector storage and similarity search, Amazon S3 for document storage, and integrates with Amazon Comprehend for query understanding.
 
 **Use Cases:**
 - Enhanced enterprise search for internal knowledge bases and documentation
@@ -138,8 +132,6 @@ Streamline and optimize business processes by automating the analysis, classific
 
 This service applies AI to common workflow challenges, helping to classify incoming requests, analyze requirements, identify dependencies, and suggest process improvements. It integrates with existing workflow systems through APIs.
 
-**AWS Integration:** Integrates with Amazon SQS for message queuing in workflows, uses Amazon DynamoDB for workflow state management, and leverages Amazon Comprehend for content analysis.
-
 **Use Cases:**
 - Automated ticket classification and routing for IT support
 - Requirements analysis and validation for software development
@@ -160,8 +152,6 @@ Deliver tailored content experiences by adapting information based on user prefe
 
 This service enables dynamic content personalization through user preference modeling, A/B testing capabilities, and localization features. It can integrate with existing user management systems to leverage user profile data.
 
-**AWS Integration:** Uses Amazon Personalize for recommendation algorithms, Amazon DynamoDB for user preference storage, and Amazon S3 for content variation storage.
-
 **Use Cases:**
 - Personalized documentation and help content based on user expertise level
 - Dynamic website content adaptation based on user interests and behavior
@@ -180,8 +170,6 @@ This service enables dynamic content personalization through user preference mod
 Enhance software quality through AI-powered code review, security scanning, documentation verification, and bug prediction.
 
 This service applies LLMs and specialized models to various aspects of software quality assurance, helping teams identify issues early and maintain high-quality standards. It integrates with existing development workflows and CI/CD pipelines.
-
-**AWS Integration:** Integrates with AWS CodeBuild and CodePipeline for CI/CD workflows, uses Amazon S3 for artifact storage, and leverages Amazon Comprehend for code and documentation analysis.
 
 **Use Cases:**
 - Automated code review for quality and best practices
@@ -207,10 +195,8 @@ The platform is built using:
 - **SQLAlchemy**: Database ORM (Object-Relational Mapping)
 - **PostgreSQL**: Database for persistent storage
 - **AWS Managed Services**: For scalable, production-ready deployment
-  - **Amazon Cognito**: For user authentication
   - **Amazon DynamoDB**: For storing conversation states, configurations, etc.
   - **Amazon S3**: For storing files and large content
-  - **Amazon Comprehend**: For natural language processing tasks
   - **Amazon RDS Aurora Serverless**: For PostgreSQL database
 - **Claude Sonnet 3.5** or **GPT-4o**: Large Language Models (LLMs)
 

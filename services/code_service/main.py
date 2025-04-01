@@ -5,16 +5,78 @@ from typing import List, Optional, Dict, Any
 from enum import Enum
 import uuid
 import asyncio
+import json
+import os
 
 from utilities.llm_client import LLMClient, LLMProvider
 from utilities.logging_utils import StructuredLogger
 from utilities.auth import get_current_user
 from utilities.prompts import PromptTemplates
 
-# Create app
+# Load OpenAPI documentation
+def load_openapi_docs():
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    docs_path = os.path.join(current_dir, "api_docs.json")
+    try:
+        with open(docs_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load OpenAPI documentation: {e}")
+        return None
+
+# Create app with OpenAPI documentation
+openapi_docs = load_openapi_docs()
 app = FastAPI(
     title="Code Generation and Transformation Service",
-    description="API for code generation, documentation, refactoring, and language translation"
+    description="""
+    API for code generation, documentation, refactoring, and language translation.
+    
+    ## Features
+    - Natural language to code conversion
+    - Support for multiple programming languages
+    - Code documentation generation
+    - Code refactoring and optimization
+    - Cross-language translation
+    - Test case generation
+    
+    ## Supported Languages
+    - Python
+    - JavaScript/TypeScript
+    - Java
+    - C#
+    - Go
+    - Rust
+    - C++
+    - Ruby
+    - PHP
+    - Swift
+    - Kotlin
+    
+    ## Code Quality Features
+    - Error handling
+    - Input validation
+    - Performance optimization
+    - Clean code principles
+    - Documentation generation
+    
+    ## Example Use Cases
+    - Rapid prototyping
+    - Code scaffolding
+    - Algorithm implementation
+    - API endpoint generation
+    - Data structure implementation
+    """,
+    version="1.0.0",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_schema=openapi_docs,
+    openapi_tags=[
+        {
+            "name": "code",
+            "description": "Operations for code generation and transformation"
+        }
+    ]
 )
 
 # Setup logger
@@ -37,14 +99,50 @@ class ProgrammingLanguage(str, Enum):
     KOTLIN = "kotlin"
     OTHER = "other"
 
+    class Config:
+        schema_extra = {
+            "example": "python"
+        }
+
 class CodeGenerationRequest(BaseModel):
     """Request model for code generation."""
-    specifications: str = Field(..., description="Natural language specifications for the code to generate")
-    language: ProgrammingLanguage = Field(..., description="Target programming language")
-    context: Optional[str] = Field(None, description="Additional context for the generation task")
-    comments_level: Optional[str] = Field("moderate", description="Level of comments in the generated code: 'minimal', 'moderate', or 'extensive'")
-    style_guide: Optional[str] = Field(None, description="Specific style guidelines to follow")
-    
+    specifications: str = Field(
+        ..., 
+        description="Natural language specifications for the code to generate",
+        example="Create a function that calculates the Fibonacci sequence up to n terms"
+    )
+    language: ProgrammingLanguage = Field(
+        ..., 
+        description="Target programming language",
+        example="python"
+    )
+    context: Optional[str] = Field(
+        None, 
+        description="Additional context for the generation task",
+        example="The function should be optimized for performance and include error handling"
+    )
+    comments_level: Optional[str] = Field(
+        "moderate", 
+        description="Level of comments in the generated code: 'minimal', 'moderate', or 'extensive'",
+        example="moderate"
+    )
+    style_guide: Optional[str] = Field(
+        None, 
+        description="Specific style guidelines to follow",
+        example="PEP 8"
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "specifications": "Create a function that calculates the Fibonacci sequence up to n terms",
+                "language": "python",
+                "context": "The function should be optimized for performance and include error handling",
+                "comments_level": "moderate",
+                "style_guide": "PEP 8"
+            }
+        }
+
 class CodeDocumentationRequest(BaseModel):
     """Request model for code documentation."""
     code: str = Field(..., description="Code to document")
@@ -79,13 +177,69 @@ class CodeResponse(BaseModel):
     explanation: Optional[str] = Field(None, description="Explanation of the code or the changes made")
     suggestions: Optional[List[str]] = Field(None, description="Suggestions for further improvements")
 
+    class Config:
+        schema_extra = {
+            "example": {
+                "request_id": "a534a8c5-3309-4790-935b-6dc1a2e59ba0",
+                "code": "def fibonacci(n):\n    if n <= 0:\n        return []\n    elif n == 1:\n        return [0]\n    \n    sequence = [0, 1]\n    for i in range(2, n):\n        sequence.append(sequence[i-1] + sequence[i-2])\n    return sequence",
+                "explanation": "The function generates a Fibonacci sequence up to n terms using an efficient iterative approach.",
+                "suggestions": [
+                    "Consider adding type hints for better code clarity",
+                    "Add input validation for negative numbers",
+                    "Consider using a generator for memory efficiency with large n"
+                ]
+            }
+        }
+
 # Routes
-@app.post("/generate", response_model=CodeResponse)
+@app.post(
+    "/generate", 
+    response_model=CodeResponse,
+    tags=["code"],
+    summary="Generate code from natural language specifications",
+    description="""
+    Generate code based on natural language specifications using advanced LLM techniques.
+    
+    ## Features
+    - Natural language to code conversion
+    - Support for multiple programming languages
+    - Configurable code style and comments
+    - Context-aware code generation
+    - Performance optimization suggestions
+    
+    ## Example Use Cases
+    - Rapid prototyping
+    - Algorithm implementation
+    - Data structure implementation
+    - API endpoint generation
+    - Utility function creation
+    
+    ## Code Quality
+    - Error handling
+    - Input validation
+    - Performance optimization
+    - Clean code principles
+    - Documentation
+    """,
+    response_description="Successfully generated code with explanations and suggestions"
+)
 async def generate_code(
     request: CodeGenerationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Generate code from natural language specifications."""
+    """
+    Generate code from natural language specifications.
+    
+    Args:
+        request: The code generation request containing specifications and preferences
+        current_user: The authenticated user making the request
+        
+    Returns:
+        CodeResponse containing the generated code, explanations, and suggestions
+        
+    Raises:
+        HTTPException: If there's an error during code generation
+    """
     request_id = str(uuid.uuid4())
     logger.info("Code generation request received", request_id, {"language": request.language})
     
@@ -160,12 +314,61 @@ async def generate_code(
         logger.error(f"Error generating code: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error generating code: {str(e)}")
 
-@app.post("/document", response_model=CodeResponse)
+@app.post(
+    "/document",
+    response_model=CodeResponse,
+    tags=["code"],
+    summary="Generate documentation for existing code",
+    description="""
+    Generate comprehensive documentation for existing code using AI-powered analysis.
+    
+    ## Features
+    - Multiple documentation styles
+    - Code analysis and explanation
+    - Example generation
+    - Best practices adherence
+    - Language-specific documentation
+    
+    ## Documentation Styles
+    - Standard: General documentation format
+    - Docstring: Python-specific docstring format
+    - JSDoc: JavaScript documentation format
+    - JavaDoc: Java documentation format
+    - Custom: User-defined documentation format
+    
+    ## Documentation Components
+    - Function/class description
+    - Parameter documentation
+    - Return value documentation
+    - Usage examples
+    - Edge cases and limitations
+    - Performance considerations
+    
+    ## Example Use Cases
+    - Legacy code documentation
+    - API documentation
+    - Library documentation
+    - Code review documentation
+    """,
+    response_description="Successfully generated documentation with explanations"
+)
 async def document_code(
     request: CodeDocumentationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Generate documentation for existing code."""
+    """
+    Generate documentation for existing code.
+    
+    Args:
+        request: The documentation request containing code and preferences
+        current_user: The authenticated user making the request
+        
+    Returns:
+        CodeResponse containing the documented code and explanations
+        
+    Raises:
+        HTTPException: If there's an error during documentation generation
+    """
     request_id = str(uuid.uuid4())
     logger.info("Code documentation request received", request_id, {"language": request.language})
     
@@ -203,12 +406,64 @@ async def document_code(
         logger.error(f"Error documenting code: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error documenting code: {str(e)}")
 
-@app.post("/refactor", response_model=CodeResponse)
+@app.post(
+    "/refactor",
+    response_model=CodeResponse,
+    tags=["code"],
+    summary="Refactor existing code according to specified goals",
+    description="""
+    Refactor code to improve quality, maintainability, and performance.
+    
+    ## Features
+    - Code quality improvement
+    - Performance optimization
+    - Readability enhancement
+    - Best practices implementation
+    - Design pattern application
+    
+    ## Refactoring Goals
+    - Improve readability
+    - Optimize performance
+    - Enhance maintainability
+    - Implement design patterns
+    - Add error handling
+    - Improve type safety
+    - Reduce complexity
+    - Enhance modularity
+    
+    ## Code Analysis
+    - Static code analysis
+    - Complexity metrics
+    - Code smell detection
+    - Performance bottlenecks
+    - Security vulnerabilities
+    
+    ## Example Use Cases
+    - Legacy code modernization
+    - Performance optimization
+    - Code quality improvement
+    - Design pattern implementation
+    - Security enhancement
+    """,
+    response_description="Successfully refactored code with explanations of changes"
+)
 async def refactor_code(
     request: CodeRefactoringRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Refactor existing code according to specified goals."""
+    """
+    Refactor code according to specified goals.
+    
+    Args:
+        request: The refactoring request containing code and goals
+        current_user: The authenticated user making the request
+        
+    Returns:
+        CodeResponse containing the refactored code and explanations
+        
+    Raises:
+        HTTPException: If there's an error during code refactoring
+    """
     request_id = str(uuid.uuid4())
     logger.info("Code refactoring request received", request_id, {"language": request.language})
     
@@ -269,12 +524,61 @@ async def refactor_code(
         logger.error(f"Error refactoring code: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error refactoring code: {str(e)}")
 
-@app.post("/translate", response_model=CodeResponse)
+@app.post(
+    "/translate",
+    response_model=CodeResponse,
+    tags=["code"],
+    summary="Translate code from one programming language to another",
+    description="""
+    Translate code between different programming languages while preserving functionality.
+    
+    ## Features
+    - Cross-language translation
+    - Idiomatic code generation
+    - Comment preservation
+    - Error handling translation
+    - Library mapping
+    
+    ## Language Support
+    - Python ↔ JavaScript/TypeScript
+    - Java ↔ C#
+    - Python ↔ Go
+    - JavaScript ↔ TypeScript
+    - And more...
+    
+    ## Translation Features
+    - Idiomatic code style
+    - Library equivalents
+    - Error handling patterns
+    - Type system mapping
+    - Memory management
+    
+    ## Example Use Cases
+    - Codebase migration
+    - Cross-platform development
+    - Language learning
+    - Library porting
+    - Framework adaptation
+    """,
+    response_description="Successfully translated code with explanations of adaptations"
+)
 async def translate_code(
     request: CodeTranslationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Translate code from one programming language to another."""
+    """
+    Translate code from one programming language to another.
+    
+    Args:
+        request: The translation request containing source code and target language
+        current_user: The authenticated user making the request
+        
+    Returns:
+        CodeResponse containing the translated code and explanations
+        
+    Raises:
+        HTTPException: If there's an error during code translation
+    """
     request_id = str(uuid.uuid4())
     logger.info("Code translation request received", request_id, {
         "source_language": request.source_language,
@@ -334,12 +638,67 @@ async def translate_code(
         logger.error(f"Error translating code: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error translating code: {str(e)}")
 
-@app.post("/generate-tests", response_model=CodeResponse)
+@app.post(
+    "/generate-tests",
+    response_model=CodeResponse,
+    tags=["code"],
+    summary="Generate test cases for existing code",
+    description="""
+    Generate comprehensive test cases for existing code using AI-powered analysis.
+    
+    ## Features
+    - Multiple test frameworks
+    - Various coverage levels
+    - Edge case detection
+    - Performance testing
+    - Integration testing
+    
+    ## Test Frameworks
+    - pytest (Python)
+    - Jest (JavaScript)
+    - JUnit (Java)
+    - NUnit (C#)
+    - Go testing
+    - And more...
+    
+    ## Coverage Levels
+    - Basic: Essential test cases
+    - Medium: Comprehensive test cases
+    - Comprehensive: Full test coverage
+    
+    ## Test Types
+    - Unit tests
+    - Integration tests
+    - Edge cases
+    - Error cases
+    - Performance tests
+    
+    ## Example Use Cases
+    - Legacy code testing
+    - API testing
+    - Library testing
+    - Framework testing
+    - Performance testing
+    """,
+    response_description="Successfully generated test cases with explanations"
+)
 async def generate_tests(
     request: TestGenerationRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    """Generate tests for existing code."""
+    """
+    Generate test cases for existing code.
+    
+    Args:
+        request: The test generation request containing code and preferences
+        current_user: The authenticated user making the request
+        
+    Returns:
+        CodeResponse containing the generated tests and explanations
+        
+    Raises:
+        HTTPException: If there's an error during test generation
+    """
     request_id = str(uuid.uuid4())
     logger.info("Test generation request received", request_id, {
         "language": request.language,
