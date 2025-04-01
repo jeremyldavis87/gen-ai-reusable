@@ -13,19 +13,19 @@ from utilities.logging_utils import StructuredLogger
 from utilities.auth import get_current_user
 from utilities.prompts import PromptTemplates
 
-# Load OpenAPI documentation
-def load_openapi_docs():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    docs_path = os.path.join(current_dir, "api_docs.json")
-    try:
-        with open(docs_path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Warning: Could not load OpenAPI documentation: {e}")
-        return None
+# # Load OpenAPI documentation
+# def load_openapi_docs():
+#     current_dir = os.path.dirname(os.path.abspath(__file__))
+#     docs_path = os.path.join(current_dir, "api_docs.json")
+#     try:
+#         with open(docs_path, "r") as f:
+#             return json.load(f)
+#     except Exception as e:
+#         print(f"Warning: Could not load OpenAPI documentation: {e}")
+#         return None
 
-# Create app with OpenAPI documentation
-openapi_docs = load_openapi_docs()
+# # Create app with OpenAPI documentation
+# openapi_docs = load_openapi_docs()
 app = FastAPI(
     title="Code Generation and Transformation Service",
     description="""
@@ -70,7 +70,7 @@ app = FastAPI(
     openapi_url="/openapi.json",
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_schema=openapi_docs,
+    # openapi_schema=openapi_docs,
     openapi_tags=[
         {
             "name": "code",

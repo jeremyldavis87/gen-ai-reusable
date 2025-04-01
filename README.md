@@ -70,8 +70,6 @@ Build sophisticated conversational experiences with domain-specific knowledge, m
 
 This service provides a complete framework for creating conversational AI applications, from simple chatbots to complex dialogue systems with memory and reasoning capabilities. It includes features for conversation state management, knowledge retrieval, and dialogue analysis.
 
-**AWS Integration:** Uses Amazon DynamoDB for conversation state management, Amazon S3 for knowledge base storage, Amazon Comprehend for intent detection and entity recognition, and Amazon Cognito for user authentication in personalized conversations.
-
 **Use Cases:**
 - Customer support automation with domain-specific knowledge
 - Interactive documentation and knowledge base interfaces

@@ -1,0 +1,151 @@
+{
+  "single_clinical_note": {
+    "extraction_request": {
+      "items_to_extract": [
+        "patient_name",
+        "date_of_visit",
+        "chief_complaint",
+        "diagnosis",
+        "treatment_plan",
+        "prescribed_medications",
+        "follow_up_date"
+      ],
+      "output_format": "json",
+      "template": "custom",
+      "custom_fields": [
+        {
+          "name": "patient_name",
+          "description": "Full name of the patient",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "date_of_visit",
+          "description": "Date of the clinical visit",
+          "type": "date",
+          "required": true,
+          "validation_regex": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        {
+          "name": "chief_complaint",
+          "description": "Main reason for the visit",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "diagnosis",
+          "description": "Medical diagnosis or diagnoses",
+          "type": "array",
+          "required": true
+        },
+        {
+          "name": "treatment_plan",
+          "description": "Recommended treatment plan",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "prescribed_medications",
+          "description": "List of prescribed medications",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "follow_up_date",
+          "description": "Recommended follow-up date",
+          "type": "date",
+          "required": false,
+          "validation_regex": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      ],
+      "additional_instructions": "Extract dates in ISO format (YYYY-MM-DD) and maintain medical terminology as written in the document"
+    }
+  },
+  "batch_clinical_notes": {
+    "extraction_request": {
+      "items_to_extract": [
+        "patient_name",
+        "date_of_visit",
+        "chief_complaint",
+        "diagnosis",
+        "treatment_plan"
+      ],
+      "output_format": "json",
+      "template": "custom",
+      "custom_fields": [
+        {
+          "name": "patient_name",
+          "description": "Full name of the patient",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "date_of_visit",
+          "description": "Date of the clinical visit",
+          "type": "date",
+          "required": true,
+          "validation_regex": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        {
+          "name": "chief_complaint",
+          "description": "Main reason for the visit",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "diagnosis",
+          "description": "Medical diagnosis or diagnoses",
+          "type": "array",
+          "required": true
+        },
+        {
+          "name": "treatment_plan",
+          "description": "Recommended treatment plan",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "additional_instructions": "Extract dates in ISO format (YYYY-MM-DD). For batch processing, maintain consistent formatting across all documents"
+    }
+  },
+  "csv_output": {
+    "extraction_request": {
+      "items_to_extract": [
+        "patient_name",
+        "date_of_visit",
+        "chief_complaint",
+        "diagnosis"
+      ],
+      "output_format": "csv",
+      "template": "custom",
+      "custom_fields": [
+        {
+          "name": "patient_name",
+          "description": "Full name of the patient",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "date_of_visit",
+          "description": "Date of the clinical visit",
+          "type": "date",
+          "required": true,
+          "validation_regex": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        {
+          "name": "chief_complaint",
+          "description": "Main reason for the visit",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "diagnosis",
+          "description": "Medical diagnosis or diagnoses",
+          "type": "array",
+          "required": true
+        }
+      ],
+      "additional_instructions": "Format dates as YYYY-MM-DD and join multiple diagnoses with semicolons"
+    }
+  }
+} 
