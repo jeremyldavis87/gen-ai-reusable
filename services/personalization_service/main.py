@@ -8,16 +8,116 @@ import json
 import asyncio
 from enum import Enum
 from datetime import datetime
+from fastapi.security import HTTPBearer
+from fastapi.openapi.utils import get_openapi
 
 from utilities.llm_client import LLMClient, LLMProvider
 from utilities.logging_utils import StructuredLogger
 from utilities.auth import get_current_user
 from utilities.prompts import PromptTemplates
 
-# Create app
+# Create app with detailed documentation
 app = FastAPI(
     title="Content Personalization Service",
-    description="API for personalizing content based on user preferences and behavior"
+    description="""
+    The Content Personalization Service provides AI-powered content personalization capabilities through a RESTful API.
+    
+    ## Key Features
+    
+    * **Content Personalization**: Customize content based on user profiles and preferences
+    * **A/B Testing**: Generate and test multiple content variations
+    * **Localization**: Adapt content for different locales and cultures
+    * **Personalized Recommendations**: Get content recommendations based on user behavior
+    
+    ## Content Types Supported
+    - Text: General text content
+    - Marketing: Marketing and promotional content
+    - Email: Email communications
+    - Product Descriptions: Product and service descriptions
+    - News: News articles and updates
+    - Educational: Learning materials and courses
+    - Documentation: Technical and user documentation
+    
+    ## Personalization Features
+    - User Profile Based: Demographics, preferences, behavior
+    - Context Aware: Time, location, device
+    - A/B Testing: Multiple variations for testing
+    - Localization: Language and cultural adaptation
+    - Recommendations: Personalized content suggestions
+    
+    ## Target Audiences
+    - General: General audience
+    - Technical: Technical users
+    - Executive: Business executives
+    - Beginner: New users
+    - Intermediate: Regular users
+    - Advanced: Expert users
+    - Customer: Existing customers
+    - Prospect: Potential customers
+    
+    ## Authentication
+    
+    All endpoints require authentication using a valid API key or token.
+    
+    ## Rate Limiting
+    
+    The API is rate-limited to ensure fair usage. Please check the response headers for rate limit information.
+    
+    ## Best Practices
+    
+    1. Always provide comprehensive user profiles for better personalization
+    2. Use specific content types and constraints for more accurate results
+    3. Include relevant context in recommendation requests
+    4. Consider cultural factors in localization requests
+    5. Test personalized content with target audience
+    6. Monitor performance metrics
+    7. Regularly update user profiles
+    8. Use appropriate content constraints
+    9. Consider mobile and desktop contexts
+    10. Follow accessibility guidelines
+    
+    ## Example Use Cases
+    - Marketing Campaign Personalization
+    - Email Content Customization
+    - Product Description Adaptation
+    - Learning Path Recommendations
+    - Technical Documentation Personalization
+    - News Feed Customization
+    """,
+    version="1.0.0",
+    contact={
+        "name": "AI Services Team",
+        "email": "ai-services@example.com",
+    },
+    license_info={
+        "name": "Proprietary",
+        "url": "https://example.com/license",
+    },
+    openapi_tags=[
+        {
+            "name": "personalization",
+            "description": "Endpoints for personalizing content based on user profiles and preferences"
+        },
+        {
+            "name": "testing",
+            "description": "Endpoints for A/B testing and content variation generation"
+        },
+        {
+            "name": "localization",
+            "description": "Endpoints for content localization and cultural adaptation"
+        },
+        {
+            "name": "recommendations",
+            "description": "Endpoints for generating personalized content recommendations"
+        }
+    ]
+)
+
+# Security scheme
+security = HTTPBearer(
+    scheme_name="Bearer",
+    description="Enter your JWT token",
+    auto_error=True
 )
 
 # Setup logger
@@ -25,6 +125,18 @@ logger = StructuredLogger("personalization_service")
 
 # Models
 class ContentType(str, Enum):
+    """
+    Supported content types for personalization.
+    
+    Attributes:
+        TEXT: General text content
+        MARKETING: Marketing and promotional content
+        EMAIL: Email communications
+        PRODUCT_DESCRIPTION: Product and service descriptions
+        NEWS: News articles and updates
+        EDUCATIONAL: Learning materials and courses
+        DOCUMENTATION: Technical documentation
+    """
     TEXT = "text"
     MARKETING = "marketing"
     EMAIL = "email"
@@ -33,7 +145,26 @@ class ContentType(str, Enum):
     EDUCATIONAL = "educational"
     DOCUMENTATION = "documentation"
     
+    class Config:
+        schema_extra = {
+            "description": "Type of content to be personalized",
+            "example": "marketing"
+        }
+    
 class TargetAudience(str, Enum):
+    """
+    Target audience categories for content personalization.
+    
+    Attributes:
+        GENERAL: General audience
+        TECHNICAL: Technical users
+        EXECUTIVE: Business executives
+        BEGINNER: New users
+        INTERMEDIATE: Regular users
+        ADVANCED: Expert users
+        CUSTOMER: Existing customers
+        PROSPECT: Potential customers
+    """
     GENERAL = "general"
     TECHNICAL = "technical"
     EXECUTIVE = "executive"
@@ -43,7 +174,24 @@ class TargetAudience(str, Enum):
     CUSTOMER = "customer"
     PROSPECT = "prospect"
     
+    class Config:
+        schema_extra = {
+            "description": "Target audience for the content",
+            "example": "technical"
+        }
+    
 class PersonalizationProfile(BaseModel):
+    """
+    User profile model for content personalization.
+    
+    Attributes:
+        user_id: Unique identifier for the user
+        demographics: Demographic information (age, gender, location, etc.)
+        preferences: User preferences (tone, format, topics, etc.)
+        behavior: User behavior data (engagement, history, etc.)
+        interests: List of user interests
+        history: User interaction history
+    """
     user_id: Optional[str] = Field(None, description="Unique identifier for the user")
     demographics: Optional[Dict[str, Any]] = Field(None, description="Demographic information")
     preferences: Optional[Dict[str, Any]] = Field(None, description="User preferences")
@@ -51,6 +199,28 @@ class PersonalizationProfile(BaseModel):
     interests: Optional[List[str]] = Field(None, description="User interests")
     history: Optional[List[Dict[str, Any]]] = Field(None, description="User interaction history")
     
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": "user123",
+                "demographics": {
+                    "age": 35,
+                    "gender": "female",
+                    "location": "New York"
+                },
+                "preferences": {
+                    "tone": "professional",
+                    "format": "video",
+                    "topics": ["technology", "business"]
+                },
+                "interests": ["AI", "machine learning", "data science"],
+                "behavior": {
+                    "avg_session_duration": 15,
+                    "preferred_time": "morning"
+                }
+            }
+        }
+
 class PersonalizationRequest(BaseModel):
     content: str = Field(..., description="Content to personalize")
     content_type: ContentType = Field(..., description="Type of content")
@@ -92,10 +262,100 @@ class LocalizationResponse(BaseModel):
     cultural_adaptations: Optional[List[str]] = Field(None, description="List of cultural adaptations made")
     warnings: Optional[List[str]] = Field(None, description="Any warnings or notes about the localization")
 
+class RecommendationResponse(BaseModel):
+    request_id: str = Field(..., description="Unique identifier for the request")
+    recommendations: List[Dict[str, Any]] = Field(..., description="List of recommended items with scores and explanations")
+    personalization_factors: Optional[List[str]] = Field(None, description="Factors used in personalization")
+    recommendation_strategy: Optional[str] = Field(None, description="Description of the recommendation strategy used")
+
 # Routes
-@app.post("/personalize", response_model=PersonalizationResponse)
+@app.post("/personalize", 
+    response_model=PersonalizationResponse,
+    tags=["personalization"],
+    summary="Personalize content based on user profile",
+    description="""
+    Personalizes content by adapting it to match user preferences, demographics, and behavior.
+    
+    ## Features
+    - User profile-based personalization
+    - Multiple content type support
+    - Target audience adaptation
+    - Constraint handling
+    - Confidence scoring
+    
+    ## Content Processing
+    - Text analysis
+    - User profile matching
+    - Content adaptation
+    - Format preservation
+    - Quality validation
+    
+    ## Example Use Cases
+    - Marketing message personalization
+    - Email content customization
+    - Product description adaptation
+    - Documentation level adjustment
+    - News content personalization
+    
+    ## Request Format
+    ```json
+    {
+        "content": "Welcome to our platform!",
+        "content_type": "marketing",
+        "user_profile": {
+            "user_id": "user123",
+            "demographics": {...},
+            "preferences": {...}
+        },
+        "target_audience": "technical",
+        "personalization_aspects": ["tone", "examples"]
+    }
+    ```
+    
+    ## Response Format
+    ```json
+    {
+        "request_id": "uuid",
+        "personalized_content": "...",
+        "personalization_summary": "...",
+        "variations": [...]
+    }
+    ```
+    """,
+    response_description="The personalized content with summary of changes"
+)
 async def personalize_content(
-    request: PersonalizationRequest,
+    request: PersonalizationRequest = Body(
+        ...,
+        example={
+            "content": "Welcome to our platform! We offer a wide range of services to help you achieve your goals.",
+            "content_type": "marketing",
+            "user_profile": {
+                "user_id": "user123",
+                "demographics": {
+                    "age": 35,
+                    "gender": "female",
+                    "location": "New York"
+                },
+                "preferences": {
+                    "tone": "professional",
+                    "length": "concise",
+                    "format": "bullet_points"
+                },
+                "interests": ["technology", "business", "personal development"],
+                "behavior": {
+                    "preferred_content_type": "video",
+                    "average_session_duration": 15
+                }
+            },
+            "target_audience": "executive",
+            "personalization_aspects": ["tone", "examples", "call_to_action"],
+            "constraints": {
+                "max_length": 500,
+                "must_include": ["free trial", "contact us"]
+            }
+        }
+    ),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Personalize content based on user profile and preferences."""
@@ -217,9 +477,99 @@ async def personalize_content(
         logger.error(f"Error personalizing content: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error personalizing content: {str(e)}")
 
-@app.post("/generate-ab-test", response_model=ContentVariation)
+@app.post("/generate-ab-test", 
+    response_model=ContentVariation,
+    tags=["testing"],
+    summary="Generate A/B test variations",
+    description="""
+    Creates multiple variations of content for A/B testing purposes.
+    
+    ## Features
+    - Multiple variation generation
+    - Audience segment targeting
+    - Performance hypothesis
+    - Content constraints
+    - Quality validation
+    
+    ## Testing Variables
+    - Content elements
+    - Tone and style
+    - Call to action
+    - Value proposition
+    - Visual elements
+    
+    ## Example Use Cases
+    - Marketing campaign testing
+    - Landing page optimization
+    - Email subject line testing
+    - Product description testing
+    - Call-to-action optimization
+    
+    ## Request Format
+    ```json
+    {
+        "content": "Get 20% off your first purchase!",
+        "content_type": "marketing",
+        "test_variables": [
+            {
+                "name": "discount_amount",
+                "options": ["20%", "25%", "30%"]
+            }
+        ],
+        "audience_segments": [...]
+    }
+    ```
+    
+    ## Response Format
+    ```json
+    {
+        "original_content": "...",
+        "variations": [
+            {
+                "title": "Variation A",
+                "content": "...",
+                "test_variables": {...}
+            }
+        ]
+    }
+    ```
+    """,
+    response_description="Generated content variations with test metadata"
+)
 async def generate_ab_test_variations(
-    request: ABTestRequest,
+    request: ABTestRequest = Body(
+        ...,
+        example={
+            "content": "Get 20% off your first purchase! Limited time offer.",
+            "content_type": "marketing",
+            "test_variables": [
+                {
+                    "name": "discount_amount",
+                    "options": ["20%", "25%", "30%"]
+                },
+                {
+                    "name": "urgency",
+                    "options": ["Limited time offer", "Act now", "Don't miss out"]
+                }
+            ],
+            "audience_segments": [
+                {
+                    "name": "new_customers",
+                    "description": "First-time visitors",
+                    "characteristics": ["price_sensitive", "risk_averse"]
+                },
+                {
+                    "name": "returning_customers",
+                    "description": "Previous buyers",
+                    "characteristics": ["brand_loyal", "value_quality"]
+                }
+            ],
+            "constraints": {
+                "max_length": 100,
+                "must_include": ["discount", "call_to_action"]
+            }
+        }
+    ),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Generate variations of content for A/B testing."""
@@ -334,9 +684,75 @@ async def generate_ab_test_variations(
         logger.error(f"Error generating A/B test variations: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error generating A/B test variations: {str(e)}")
 
-@app.post("/localize", response_model=LocalizationResponse)
+@app.post("/localize", 
+    response_model=LocalizationResponse,
+    tags=["localization"],
+    summary="Localize content for different locales",
+    description="""
+    Localizes content for specific locales while considering cultural factors.
+    
+    ## Features
+    - Language translation
+    - Cultural adaptation
+    - Idiom handling
+    - Format preservation
+    - Quality validation
+    
+    ## Localization Aspects
+    - Language translation
+    - Cultural nuances
+    - Regional preferences
+    - Format adaptation
+    - Regulatory compliance
+    
+    ## Example Use Cases
+    - Global marketing campaigns
+    - International product launches
+    - Multi-language documentation
+    - Regional content adaptation
+    - Cultural customization
+    
+    ## Request Format
+    ```json
+    {
+        "content": "Welcome to our platform!",
+        "content_type": "marketing",
+        "source_locale": "en-US",
+        "target_locale": "es-ES",
+        "cultural_notes": {
+            "formality": "high"
+        }
+    }
+    ```
+    
+    ## Response Format
+    ```json
+    {
+        "request_id": "uuid",
+        "localized_content": "...",
+        "cultural_adaptations": [...],
+        "warnings": [...]
+    }
+    ```
+    """,
+    response_description="Localized content with cultural adaptations"
+)
 async def localize_content(
-    request: LocalizationRequest,
+    request: LocalizationRequest = Body(
+        ...,
+        example={
+            "content": "Welcome to our platform! We're excited to help you achieve your goals.",
+            "content_type": "marketing",
+            "source_locale": "en-US",
+            "target_locale": "es-ES",
+            "cultural_notes": {
+                "formality": "high",
+                "idioms": "avoid",
+                "humor": "professional"
+            },
+            "preserve_elements": ["company_name", "product_names"]
+        }
+    ),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Localize content for a specific locale and culture."""
@@ -438,11 +854,137 @@ async def localize_content(
         logger.error(f"Error localizing content: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error localizing content: {str(e)}")
 
-@app.post("/personalize-recommendation")
+@app.post("/personalize-recommendation", 
+    response_model=RecommendationResponse,
+    tags=["recommendations"],
+    summary="Get personalized content recommendations",
+    description="""
+    Generates personalized content recommendations based on user profile and available items.
+    
+    ## Features
+    - Profile-based matching
+    - Content relevance scoring
+    - Contextual awareness
+    - Explanation generation
+    - Diversity handling
+    
+    ## Recommendation Factors
+    - User preferences
+    - Historical behavior
+    - Content attributes
+    - Context awareness
+    - Time sensitivity
+    
+    ## Example Use Cases
+    - Learning path recommendations
+    - Content discovery
+    - Product recommendations
+    - Reading suggestions
+    - Course recommendations
+    
+    ## Request Format
+    ```json
+    {
+        "user_profile": {
+            "user_id": "user123",
+            "preferences": {...},
+            "history": [...]
+        },
+        "items": [
+            {
+                "name": "Advanced Python Course",
+                "attributes": {...}
+            }
+        ],
+        "recommendation_context": {
+            "purpose": "learning"
+        }
+    }
+    ```
+    
+    ## Response Format
+    ```json
+    {
+        "request_id": "uuid",
+        "recommendations": [
+            {
+                "item_id": "course123",
+                "relevance_score": 0.95,
+                "explanation": "..."
+            }
+        ],
+        "personalization_factors": [...]
+    }
+    ```
+    """,
+    response_description="Personalized recommendations with explanations and scores"
+)
 async def personalize_recommendation(
-    user_profile: PersonalizationProfile = Body(...),
-    items: List[Dict[str, Any]] = Body(...),
-    recommendation_context: Optional[Dict[str, Any]] = Body(None),
+    request: Dict[str, Any] = Body(
+        ...,
+        example={
+            "user_profile": {
+                "user_id": "user123",
+                "demographics": {
+                    "age": 35,
+                    "gender": "female",
+                    "location": "New York"
+                },
+                "preferences": {
+                    "content_type": "video",
+                    "difficulty": "intermediate",
+                    "topics": ["AI", "machine learning"]
+                },
+                "interests": ["technology", "data science", "programming"],
+                "behavior": {
+                    "average_watch_time": 15,
+                    "preferred_duration": "short"
+                },
+                "history": [
+                    {
+                        "type": "course",
+                        "name": "Introduction to Python",
+                        "completion_date": "2023-01-15"
+                    },
+                    {
+                        "type": "article",
+                        "name": "Machine Learning Basics",
+                        "view_date": "2023-02-01"
+                    }
+                ]
+            },
+            "items": [
+                {
+                    "name": "Advanced Python Programming",
+                    "description": "Deep dive into Python's advanced features",
+                    "category": "Programming",
+                    "tags": ["python", "advanced", "programming"],
+                    "attributes": {
+                        "difficulty": "advanced",
+                        "duration": "2 hours",
+                        "format": "video"
+                    }
+                },
+                {
+                    "name": "Machine Learning Fundamentals",
+                    "description": "Introduction to ML concepts and algorithms",
+                    "category": "Data Science",
+                    "tags": ["machine learning", "beginner", "data science"],
+                    "attributes": {
+                        "difficulty": "beginner",
+                        "duration": "3 hours",
+                        "format": "video"
+                    }
+                }
+            ],
+            "recommendation_context": {
+                "purpose": "skill_development",
+                "time_available": 60,
+                "preferred_format": "video",
+                "current_skill_level": "intermediate"
+            }
+        }
+    ),
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
     """Generate personalized recommendations from a list of items based on user profile."""
@@ -450,6 +992,11 @@ async def personalize_recommendation(
     
     try:
         logger.info("Recommendation personalization request received", request_id)
+        
+        # Extract components from the request
+        user_profile = PersonalizationProfile(**request["user_profile"])
+        items = request["items"]
+        recommendation_context = request.get("recommendation_context")
         
         # Create LLM client
         llm_client = LLMClient()
@@ -559,12 +1106,11 @@ async def personalize_recommendation(
                 # If no JSON found, try to parse the entire response
                 recommendation_data = json.loads(result)
             
-            return JSONResponse(
-                content={
-                    "request_id": request_id,
-                    "user_id": user_profile.user_id,
-                    "recommendations": recommendation_data
-                }
+            return RecommendationResponse(
+                request_id=request_id,
+                recommendations=recommendation_data.get("recommendations", []),
+                personalization_factors=recommendation_data.get("personalization_factors"),
+                recommendation_strategy=recommendation_data.get("recommendation_strategy")
             )
             
         except json.JSONDecodeError as e:
@@ -574,3 +1120,150 @@ async def personalize_recommendation(
     except Exception as e:
         logger.error(f"Error generating recommendations: {str(e)}", request_id)
         raise HTTPException(status_code=500, detail=f"Error generating recommendations: {str(e)}")
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    # Let FastAPI generate the base schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        tags=app.openapi_tags,
+    )
+
+    # Add security scheme
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    
+    openapi_schema["components"]["securitySchemes"] = {
+        "Bearer": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT token"
+        }
+    }
+
+    # Add global security requirement
+    openapi_schema["security"] = [{"Bearer": []}]
+
+    # Update examples and descriptions for each endpoint
+    if "paths" in openapi_schema:
+        for path, path_item in openapi_schema["paths"].items():
+            if "post" not in path_item:
+                continue
+                
+            post_op = path_item["post"]
+            
+            # Enhance descriptions based on the endpoint
+            if path == "/personalize":
+                post_op["description"] = """
+                Personalizes content by adapting it to match user preferences, demographics, and behavior.
+                
+                ## Features
+                - User profile-based personalization
+                - Multiple content type support
+                - Target audience adaptation
+                - Constraint handling
+                - Confidence scoring
+                
+                ## Content Processing
+                - Text analysis
+                - User profile matching
+                - Content adaptation
+                - Format preservation
+                - Quality validation
+                
+                ## Example Use Cases
+                - Marketing message personalization
+                - Email content customization
+                - Product description adaptation
+                - Documentation level adjustment
+                - News content personalization
+                """
+                
+            elif path == "/generate-ab-test":
+                post_op["description"] = """
+                Creates multiple variations of content for A/B testing purposes.
+                
+                ## Features
+                - Multiple variation generation
+                - Audience segment targeting
+                - Performance hypothesis
+                - Content constraints
+                - Quality validation
+                
+                ## Testing Variables
+                - Content elements
+                - Tone and style
+                - Call to action
+                - Value proposition
+                - Visual elements
+                
+                ## Example Use Cases
+                - Marketing campaign testing
+                - Landing page optimization
+                - Email subject line testing
+                - Product description testing
+                - Call-to-action optimization
+                """
+                
+            elif path == "/localize":
+                post_op["description"] = """
+                Localizes content for specific locales while considering cultural factors.
+                
+                ## Features
+                - Language translation
+                - Cultural adaptation
+                - Idiom handling
+                - Format preservation
+                - Quality validation
+                
+                ## Localization Aspects
+                - Language translation
+                - Cultural nuances
+                - Regional preferences
+                - Format adaptation
+                - Regulatory compliance
+                
+                ## Example Use Cases
+                - Global marketing campaigns
+                - International product launches
+                - Multi-language documentation
+                - Regional content adaptation
+                - Cultural customization
+                """
+                
+            elif path == "/personalize-recommendation":
+                post_op["description"] = """
+                Generates personalized content recommendations based on user profile and available items.
+                
+                ## Features
+                - Profile-based matching
+                - Content relevance scoring
+                - Contextual awareness
+                - Explanation generation
+                - Diversity handling
+                
+                ## Recommendation Factors
+                - User preferences
+                - Historical behavior
+                - Content attributes
+                - Context awareness
+                - Time sensitivity
+                
+                ## Example Use Cases
+                - Learning path recommendations
+                - Content discovery
+                - Product recommendations
+                - Reading suggestions
+                - Course recommendations
+                """
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
