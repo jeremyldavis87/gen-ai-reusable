@@ -169,19 +169,75 @@ Enhance software quality through AI-powered code review, security scanning, docu
 
 This service applies LLMs and specialized models to various aspects of software quality assurance, helping teams identify issues early and maintain high-quality standards. It integrates with existing development workflows and CI/CD pipelines.
 
+**Supported Languages:**
+- Python
+- JavaScript/TypeScript
+- Java
+- C#
+- Go
+- Rust
+- C++
+- Ruby
+- PHP
+- Swift
+- Kotlin
+- HTML/CSS
+- SQL
+
+**Quality Aspects:**
+- Code Style and Standards
+- Security Vulnerabilities
+- Documentation Quality
+- Performance Issues
+- Error Handling
+- Test Coverage
+- Maintainability
+- Best Practices
+
 **Use Cases:**
 - Automated code review for quality and best practices
 - Security vulnerability scanning for early detection of issues
 - Documentation completeness and accuracy verification
 - Compliance checking against industry or organizational standards
 - Predictive bug detection based on code patterns and history
+- Automatic security vulnerability remediation
+- Code transformation for improved security
 
-- **Endpoints**:
+**Endpoints:**
+
+**Code Review:**
   - `/quality/code-review`: Review code and identify issues
+
+**Security:**
   - `/quality/security-scan`: Scan code for security vulnerabilities
+  - `/quality/security-fix`: Automatically fix security vulnerabilities in code
+
+**Documentation:**
   - `/quality/verify-documentation`: Verify documentation completeness and accuracy
+  - `/quality/fix-documentation`: Fix documentation issues in code
+
+**Compliance:**
   - `/quality/check-compliance`: Check code for compliance with standards
+  - `/quality/fix-compliance`: Fix compliance issues in code
+
+**Bug Prediction:**
   - `/quality/bug-prediction`: Predict potential bugs in code
+  - `/quality/fix-bug`: Fix bugs in code
+
+**Utilities:**
+  - `/quality/format-payload`: Format code and dependencies for request payloads
+
+**Best Practices:**
+1. Provide comprehensive code context for better analysis
+2. Use specific review focus areas for targeted feedback
+3. Include relevant style guides and standards
+4. Consider security implications in all code reviews
+5. Maintain up-to-date documentation
+6. Follow language-specific best practices
+7. Implement proper error handling
+8. Write comprehensive tests
+9. Consider performance implications
+10. Follow accessibility guidelines
 
 ## Architecture
 
